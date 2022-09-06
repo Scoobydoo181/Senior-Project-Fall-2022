@@ -1,0 +1,2 @@
+# Ignore pyenv version file, this will be specific to each developer
+.python-version
