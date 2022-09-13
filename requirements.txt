@@ -7,6 +7,10 @@ mccabe==0.7.0
 platformdirs==2.5.2
 pycodestyle==2.9.1
 pylint==2.15.0
+PySide6==6.3.2
+PySide6-Addons==6.3.2
+PySide6-Essentials==6.3.2
+shiboken6==6.3.2
 toml==0.10.2
 tomli==2.0.1
 tomlkit==0.11.4
