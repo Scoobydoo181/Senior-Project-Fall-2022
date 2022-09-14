@@ -1,36 +1,33 @@
 """Handles any UI elements on the screen."""
 import sys
-import random
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore
+from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QVBoxLayout
 
 
-class MyWidget(QtWidgets.QWidget):
+class MainWidget(QMainWindow):
     """Main widget"""
 
     def __init__(self):
         super().__init__()
 
-        self.hello = ["Hallo Welt", "Hei maailma", "Hola Mundo", "Привет мир"]
+        self.setWindowTitle("Iris Software")
 
-        self.button = QtWidgets.QPushButton("Click me!")
-        self.text = QtWidgets.QLabel("Hello World",
-                                     alignment=QtCore.Qt.AlignCenter)
+        text = QLabel("Main Window",
+                      alignment=QtCore.Qt.AlignCenter)
 
-        self.layout = QtWidgets.QVBoxLayout(self)
-        self.layout.addWidget(self.text)
-        self.layout.addWidget(self.button)
+        layout = QVBoxLayout()
+        layout.addWidget(text)
 
-        self.button.clicked.connect(self.magic)
+        central_widget = QWidget()
+        central_widget.setLayout(layout)
 
-    @QtCore.Slot()
-    def magic(self):
-        self.text.setText(random.choice(self.hello))
+        self.setCentralWidget(central_widget)
 
 
 def launch_ui_thread():
-    app = QtWidgets.QApplication([])
+    app = QApplication([])
 
-    widget = MyWidget()
+    widget = MainWidget()
     widget.resize(800, 600)
     widget.show()
 
