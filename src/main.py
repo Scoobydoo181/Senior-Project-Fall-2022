@@ -2,12 +2,8 @@ from detectEyes import detectEyes
 from ui import launchMenuThread
 import cv2
 
-def getCameraImage(camera):
-    pass
-
 def detectBlink(eyeCoords, blinkDuration):
     pass
-
 
 def clickMouse(screenCoords):
     pass
