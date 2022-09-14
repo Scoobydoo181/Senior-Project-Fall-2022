@@ -1,5 +1,6 @@
 from detectEyes import detectEyes
 from ui import launchMenuThread
+import cv2
 
 def getCameraImage(camera):
     pass
@@ -21,8 +22,8 @@ def readSettingsFromUI():
     pass
 
 if __name__ == "__main__":
-    camera = None
-    eyeDetector = None
+    camera = cv2.VideoCapture(0)
+    eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
     uiLaunched = false
     settings = {}
 
@@ -31,7 +32,7 @@ if __name__ == "__main__":
         if uiLaunched:
             readSettingsFromUI(settings)
 
-        image = getCameraImage(camera)
+        _, image = camera.read()
 
         eyeCoords = detectEyes(image, eyeDetector)
 
