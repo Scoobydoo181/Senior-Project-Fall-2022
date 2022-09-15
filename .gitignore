@@ -1,2 +1,4 @@
 # Ignore pyenv version file, this will be specific to each developer
 .python-version
+# Ignore cache files
+__pycache__
