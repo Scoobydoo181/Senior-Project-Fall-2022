@@ -1,5 +1,6 @@
+from ui.main import launch_ui_thread
 from detectEyes import detectEyes
-from ui import launchMenuThread
+
 import cv2
 
 def detectBlink(eyeCoords, blinkDuration):
