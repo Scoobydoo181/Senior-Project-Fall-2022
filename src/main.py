@@ -1,5 +1,5 @@
 from detectEyes import detectEyes
-from ui import launchMenuThread
+from ui.main import launch_ui_thread
 
 def getCameraImage(camera):
     pass
