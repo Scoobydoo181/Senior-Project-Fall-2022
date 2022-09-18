@@ -7,7 +7,7 @@ from widgets import MainWidget
 def launch_ui_thread():
     app = QApplication([])
 
-    widget = MainWidget(app.primaryScreen())
+    widget = MainWidget()
     widget.show()
 
     sys.exit(app.exec())
