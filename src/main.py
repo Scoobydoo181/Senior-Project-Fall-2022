@@ -1,7 +1,9 @@
-from ui.main import launch_ui_thread
 from detectEyes import detectEyes
+from ui.main import launchUIThread
+
 
 import cv2
+
 
 def detectBlink(eyeCoords, blinkDuration):
     pass
@@ -9,14 +11,18 @@ def detectBlink(eyeCoords, blinkDuration):
 def clickMouse(screenCoords):
     pass
 
+
 def moveMouse(screenCoords):
     pass
+
 
 def menuKeyPressed():
     pass
 
+
 def readSettingsFromUI():
     pass
+
 
 if __name__ == "__main__":
     camera = cv2.VideoCapture(0)
@@ -45,4 +51,3 @@ if __name__ == "__main__":
         if menuKeyPressed():
             launchUIThread()
             uiLaunched = True
-

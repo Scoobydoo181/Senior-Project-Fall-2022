@@ -10,9 +10,9 @@ class MainWidget(QMainWindow):
     height = 240
 
     @QtCore.Slot()
-    def open_calibration_window(self):
-        self.calibration_window = CalibrationWidget()
-        self.calibration_window.showFullScreen()
+    def openCalibrationWindow(self):
+        self.calibrationWindow = CalibrationWidget()
+        self.calibrationWindow.showFullScreen()
         self.showMinimized()
 
     def __init__(self):
@@ -32,24 +32,24 @@ class MainWidget(QMainWindow):
         self.text = QLabel("Main Window",
                            alignment=QtCore.Qt.AlignCenter)
         # Create calibrate button
-        self.calibrate_button = QPushButton("Calibrate")
+        self.calibrateButton = QPushButton("Calibrate")
         # Connect onClick
-        self.calibrate_button.clicked.connect(self.open_calibration_window)
+        self.calibrateButton.clicked.connect(self.openCalibrationWindow)
 
         # Create layout container
         layout = QVBoxLayout()
         # Add placeholder text to container
         layout.addWidget(self.text)
         # Add calibrate button to container
-        layout.addWidget(self.calibrate_button)
+        layout.addWidget(self.calibrateButton)
 
         # Create main window
-        central_widget = QWidget()
+        centralWidget = QWidget()
         # Add container to main window
-        central_widget.setLayout(layout)
+        centralWidget.setLayout(layout)
 
         # Set the main window
-        self.setCentralWidget(central_widget)
+        self.setCentralWidget(centralWidget)
         # Set the position and size of the main window
         self.setGeometry(QApplication.primaryScreen().availableGeometry().width(
         ) - MainWidget.width, 0, MainWidget.width, MainWidget.height)
@@ -60,33 +60,33 @@ class MainWidget(QMainWindow):
 class CalibrationWidget(QMainWindow):
     """Full-screen window with calibration steps."""
 
-    def draw_circle(self, loc: Tuple[int]):
-        self.circles.append(CalibrationCircle(self.central_widget, loc))
+    def drawCircle(self, loc: Tuple[int]):
+        self.circles.append(CalibrationCircle(self.centralWidget, loc))
 
-    def get_circle_locations(self):
+    def getCircleLocations(self):
         # Get the screen geometry
-        screen_geometry = QApplication.primaryScreen().availableGeometry()
+        screenGeometry = QApplication.primaryScreen().availableGeometry()
         # Get the locations
         locs = []
-        true_left = 0
-        true_mid_x = screen_geometry.center().x() - CalibrationCircle.size / 2
-        true_mid_y = screen_geometry.center().y() - CalibrationCircle.size / 2
-        true_right = screen_geometry.right() - CalibrationCircle.size
-        true_top = 0
+        trueLeft = 0
+        trueMidX = screenGeometry.center().x() - CalibrationCircle.size / 2
+        trueMidY = screenGeometry.center().y() - CalibrationCircle.size / 2
+        trueRight = screenGeometry.right() - CalibrationCircle.size
+        trueTop = 0
         # NOTE: Not sure if this is because my laptop has a notch, but this isn't actually the bottom?
-        true_bottom = screen_geometry.bottom() - CalibrationCircle.size - 35
+        trueBottom = screenGeometry.bottom() - CalibrationCircle.size - 35
         # Top
-        locs.append((true_left, true_top))
-        locs.append((true_mid_x, true_top))
-        locs.append((true_right, true_top))
+        locs.append((trueLeft, trueTop))
+        locs.append((trueMidX, trueTop))
+        locs.append((trueRight, trueTop))
         # Middle
-        locs.append((true_left, true_mid_y))
-        locs.append((true_mid_x, true_mid_y))
-        locs.append((true_right, true_mid_y))
+        locs.append((trueLeft, trueMidY))
+        locs.append((trueMidX, trueMidY))
+        locs.append((trueRight, trueMidY))
         # Bottom
-        locs.append((true_left, true_bottom))
-        locs.append((true_mid_x, true_bottom))
-        locs.append((true_right, true_bottom))
+        locs.append((trueLeft, trueBottom))
+        locs.append((trueMidX, trueBottom))
+        locs.append((trueRight, trueBottom))
 
         return locs
 
@@ -97,50 +97,50 @@ class CalibrationWidget(QMainWindow):
         self.setWindowTitle("Iris Software - Calibration")
 
         # Create main window
-        self.central_widget = QWidget()
+        self.centralWidget = QWidget()
         # Store calibration circles
         self.circles: List[CalibrationCircle] = []
-        locs = self.get_circle_locations()
+        locs = self.getCircleLocations()
         for loc in locs:
-            self.draw_circle(loc)
+            self.drawCircle(loc)
 
         # Set the main window
-        self.setCentralWidget(self.central_widget)
+        self.setCentralWidget(self.centralWidget)
 
 
 class CalibrationCircle(QPushButton):
     """Circle with an active state and onClick handler."""
     active = False
-    active_color = "blue"
-    inactive_color = "gray"
+    activeColor = "blue"
+    inactiveColor = "gray"
     size = 80
 
-    def toggle_active(self):
+    def toggleActive(self):
         self.active = not self.active
-        self.set_style()
+        self.setStyle()
 
-    def set_style(self):
+    def setStyle(self):
         style = "border-radius: 40px; background-color: "
 
         if self.active:
-            self.setStyleSheet(f"{style}{self.active_color};")
+            self.setStyleSheet(f"{style}{self.activeColor};")
         else:
-            self.setStyleSheet(f"{style}{self.inactive_color};")
+            self.setStyleSheet(f"{style}{self.inactiveColor};")
 
     @QtCore.Slot()
-    def handle_click(self):
-        if self.active and self.on_click:
-            self.on_click()
+    def handleClick(self):
+        if self.active and self.onClick:
+            self.onClick()
 
-    def __init__(self, parent: QWidget, loc: Tuple[int], on_click=None):
+    def __init__(self, parent: QWidget, loc: Tuple[int], onClick=None):
         super().__init__("", parent)
 
         # Store onClick
-        self.on_click = on_click
+        self.onClick = onClick
         # Set size
         (x, y) = loc
         self.setGeometry(x, y, self.size, self.size)
         # Set onClick
-        self.clicked.connect(self.handle_click)
+        self.clicked.connect(self.handleClick)
         # Set style
-        self.set_style()
+        self.setStyle()
