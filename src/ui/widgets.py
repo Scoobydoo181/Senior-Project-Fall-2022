@@ -51,7 +51,7 @@ class MainWidget(QMainWindow):
         # Set the main window
         self.setCentralWidget(central_widget)
         # Set the position and size of the main window
-        self.setGeometry(QApplication.primaryScreen().geometry().width(
+        self.setGeometry(QApplication.primaryScreen().availableGeometry().width(
         ) - MainWidget.width, 0, MainWidget.width, MainWidget.height)
         # Lock the width and height of the window
         self.setFixedSize(MainWidget.width, MainWidget.height)
@@ -65,7 +65,7 @@ class CalibrationWidget(QMainWindow):
 
     def get_circle_locations(self):
         # Get the screen geometry
-        screen_geometry = QApplication.primaryScreen().geometry()
+        screen_geometry = QApplication.primaryScreen().availableGeometry()
         # Get the locations
         locs = []
         true_left = 0
@@ -74,7 +74,7 @@ class CalibrationWidget(QMainWindow):
         true_right = screen_geometry.right() - CalibrationCircle.size
         true_top = 0
         # NOTE: Not sure if this is because my laptop has a notch, but this isn't actually the bottom?
-        true_bottom = screen_geometry.bottom() - CalibrationCircle.size
+        true_bottom = screen_geometry.bottom() - CalibrationCircle.size - 35
         # Top
         locs.append((true_left, true_top))
         locs.append((true_mid_x, true_top))
