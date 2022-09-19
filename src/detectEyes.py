@@ -98,10 +98,10 @@ def testMain():
     # faceDetector = cv2.CascadeClassifier("resources/haarcascade_frontalface_default.xml")
     eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
 
-    detector_params = cv2.SimpleBlobDetector_Params()
-    detector_params.filterByArea = True
-    detector_params.maxArea = 1500
-    blobDetector = cv2.SimpleBlobDetector_create(detector_params)
+    detectorParams = cv2.SimpleBlobDetector_Params()
+    detectorParams.filterByArea = True
+    detectorParams.maxArea = 1500
+    blobDetector = cv2.SimpleBlobDetector_create(detectorParams)
 
     while(True):
         _, image = camera.read()
@@ -120,10 +120,10 @@ def testBlobDetection(demo=True):
 
     eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
     
-    detector_params = cv2.SimpleBlobDetector_Params()
-    detector_params.filterByArea = True
-    detector_params.maxArea = 1500
-    blobDetector = cv2.SimpleBlobDetector_create(detector_params)
+    detectorParams = cv2.SimpleBlobDetector_Params()
+    detectorParams.filterByArea = True
+    detectorParams.maxArea = 1500
+    blobDetector = cv2.SimpleBlobDetector_create(detectorParams)
 
     eyeCascadeBlobDetector(image, eyeDetector, blobDetector, demo)
 
