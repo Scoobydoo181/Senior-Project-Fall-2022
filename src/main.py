@@ -1,12 +1,10 @@
-from detectEyes import detectEyes
 from ui.main import launch_ui_thread
+from detectEyes import detectEyes
 
-def getCameraImage(camera):
-    pass
+import cv2
 
 def detectBlink(eyeCoords, blinkDuration):
     pass
-
 
 def clickMouse(screenCoords):
     pass
@@ -21,8 +19,8 @@ def readSettingsFromUI():
     pass
 
 if __name__ == "__main__":
-    camera = None
-    eyeDetector = None
+    camera = cv2.VideoCapture(0)
+    eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
     uiLaunched = false
     settings = {}
 
@@ -31,7 +29,7 @@ if __name__ == "__main__":
         if uiLaunched:
             readSettingsFromUI(settings)
 
-        image = getCameraImage(camera)
+        _, image = camera.read()
 
         eyeCoords = detectEyes(image, eyeDetector)
 

@@ -16,7 +16,7 @@ The goal of this project is to use machine learning and a webcam to make gaze tr
 
 1. Make sure you are on Python `v3.7.13`.
 2. Install our dependency & virtual environment manager by running `pip install pipenv` or `pip3 install pipenv`.
-3. To install project dependencies, run `pipenv install` in the project's root directory.
+3. To install project dependencies, run `pipenv install --dev` in the project's root directory.
 4. To run the project with the installed dependencies, run `pipenv run python FILE_NAME.py`.
 
 #### Installing Dependencies
