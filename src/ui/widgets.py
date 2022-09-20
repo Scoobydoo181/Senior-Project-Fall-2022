@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 
 class MainWidget(QMainWindow):
     """Main widget showing the video stream in the corner."""
+
     width = 360
     height = 240
 
@@ -38,12 +39,10 @@ class MainWidget(QMainWindow):
         self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
 
         # Adjust the style
-        self.setStyleSheet(
-            "background-color: black; color: white")
+        self.setStyleSheet("background-color: black; color: white")
 
         # Create placeholder text
-        self.text = QLabel("Main Window",
-                           alignment=QtCore.Qt.AlignCenter)
+        self.text = QLabel("Main Window", alignment=QtCore.Qt.AlignCenter)
         # Create calibrate button
         self.calibrateButton = QPushButton("Calibrate")
         # Connect onClick
@@ -64,14 +63,19 @@ class MainWidget(QMainWindow):
         # Set the main window
         self.setCentralWidget(centralWidget)
         # Set the position and size of the main window
-        self.setGeometry(QApplication.primaryScreen().availableGeometry().width(
-        ) - MainWidget.width, 0, MainWidget.width, MainWidget.height)
+        self.setGeometry(
+            QApplication.primaryScreen().availableGeometry().width() - MainWidget.width,
+            0,
+            MainWidget.width,
+            MainWidget.height,
+        )
         # Lock the width and height of the window
         self.setFixedSize(MainWidget.width, MainWidget.height)
 
 
 class CalibrationWidget(QMainWindow):
     """Full-screen window with calibration steps."""
+
     complete = QtCore.Signal()
 
     def getCircleLocations(self):
@@ -160,11 +164,11 @@ class CalibrationWidget(QMainWindow):
         layout.addWidget(beginButton)
         # Position the widget
         instructionsWidget.setParent(container)
-        (centerX, centerY) = QApplication.primaryScreen(
-        ).availableGeometry().center().toTuple()
+        (centerX, centerY) = (
+            QApplication.primaryScreen().availableGeometry().center().toTuple()
+        )
         (widgetWidth, widgetHeight) = instructionsWidget.size().toTuple()
-        instructionsWidget.move(
-            centerX - widgetWidth, centerY - widgetHeight - 35)
+        instructionsWidget.move(centerX - widgetWidth, centerY - widgetHeight - 35)
         # Set as the central widget
         self.setCentralWidget(container)
 
@@ -180,6 +184,7 @@ class CalibrationWidget(QMainWindow):
 
 class CalibrationCircle(QPushButton):
     """Circle with an active state and onClick handler."""
+
     active = False
     activeColor = "blue"
     inactiveColor = "black"
