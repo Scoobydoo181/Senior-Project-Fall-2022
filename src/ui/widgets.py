@@ -1,7 +1,7 @@
 """A collection of widgets for the UI."""
 from typing import List, Tuple
-from PySide6 import QtCore
-from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QPushButton, QApplication
+from PySide6 import QtCore, QtGui
+from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QPushButton, QApplication, QHBoxLayout
 
 
 class MainWidget(QMainWindow):
@@ -60,9 +60,6 @@ class MainWidget(QMainWindow):
 class CalibrationWidget(QMainWindow):
     """Full-screen window with calibration steps."""
 
-    def drawCircle(self, loc: Tuple[int]):
-        self.circles.append(CalibrationCircle(self.centralWidget, loc))
-
     def getCircleLocations(self):
         # Get the screen geometry
         screenGeometry = QApplication.primaryScreen().availableGeometry()
@@ -90,29 +87,86 @@ class CalibrationWidget(QMainWindow):
 
         return locs
 
+    def drawCircles(self):
+        # Create widget
+        circlesWidget = QWidget()
+        # Store calibration circles
+        self.circles: List[CalibrationCircle] = []
+        # Get the circle locations
+        locs = self.getCircleLocations()
+        # Draw the circles
+        for loc in locs:
+            circle = CalibrationCircle(circlesWidget, loc)
+            self.circles.append(circle)
+        # Set as the central widget
+        self.setCentralWidget(circlesWidget)
+
+    @QtCore.Slot()
+    def beginCalibration(self):
+        # Draw circles
+        self.drawCircles()
+        # Activate the first circle
+        self.activeCircleIndex = 0
+        self.circles[self.activeCircleIndex].toggleActive()
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        # If calibration has begun and the spacebar was pressed
+        if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
+            # Check if calibration is complete
+            if self.activeCircleIndex >= len(self.circles):
+                # TODO: finish calibration
+                return super().keyPressEvent(event)
+            # Store and progress calibration
+            # TODO: get pupil coordinates and store them
+            self.circles[self.activeCircleIndex].setParent(None)
+            self.activeCircleIndex += 1
+            self.circles[self.activeCircleIndex].toggleActive()
+
+        return super().keyPressEvent(event)
+
+    def drawInstructions(self):
+        # Create widget
+        container = QWidget()
+        instructionsWidget = QWidget(container)
+        # Create layout container
+        layout = QVBoxLayout()
+        # Add title to layout
+        title = QLabel("Calibration", alignment=QtCore.Qt.AlignCenter)
+        layout.addWidget(title)
+        # Add instructions to layout
+        instructions = QLabel("These are some instructions.")
+        layout.addWidget(instructions)
+        # Add container to widget
+        instructionsWidget.setLayout(layout)
+        # Add button to widget
+        beginButton = QPushButton("Begin Calibration")
+        beginButton.clicked.connect(self.beginCalibration)
+        layout.addWidget(beginButton)
+        # Position the widget
+        instructionsWidget.setParent(container)
+        (centerX, centerY) = QApplication.primaryScreen(
+        ).availableGeometry().center().toTuple()
+        (widgetWidth, widgetHeight) = instructionsWidget.size().toTuple()
+        instructionsWidget.move(
+            centerX - widgetWidth, centerY - widgetHeight - 35)
+        # Set as the central widget
+        self.setCentralWidget(container)
+
     def __init__(self):
         super().__init__()
 
         # Remove window title
         self.setWindowTitle("Iris Software - Calibration")
 
-        # Create main window
-        self.centralWidget = QWidget()
-        # Store calibration circles
-        self.circles: List[CalibrationCircle] = []
-        locs = self.getCircleLocations()
-        for loc in locs:
-            self.drawCircle(loc)
-
-        # Set the main window
-        self.setCentralWidget(self.centralWidget)
+        # Draw the instructions
+        self.drawInstructions()
 
 
 class CalibrationCircle(QPushButton):
     """Circle with an active state and onClick handler."""
     active = False
     activeColor = "blue"
-    inactiveColor = "gray"
+    inactiveColor = "black"
     size = 80
 
     def toggleActive(self):
@@ -127,20 +181,11 @@ class CalibrationCircle(QPushButton):
         else:
             self.setStyleSheet(f"{style}{self.inactiveColor};")
 
-    @QtCore.Slot()
-    def handleClick(self):
-        if self.active and self.onClick:
-            self.onClick()
-
-    def __init__(self, parent: QWidget, loc: Tuple[int], onClick=None):
+    def __init__(self, parent: QWidget, loc: Tuple[int]):
         super().__init__("", parent)
 
-        # Store onClick
-        self.onClick = onClick
         # Set size
         (x, y) = loc
         self.setGeometry(x, y, self.size, self.size)
-        # Set onClick
-        self.clicked.connect(self.handleClick)
         # Set style
         self.setStyle()
