@@ -27,6 +27,4 @@ inlinevar-rgx=[a-z][a-zA-Z0-9]*$
 
 [MESSAGES CONTROL]
 
-disable=missing-function-docstring
-disable=c-extension-no-member
-disable=no-name-in-module
+disable=missing-function-docstring,c-extension-no-member,no-name-in-module

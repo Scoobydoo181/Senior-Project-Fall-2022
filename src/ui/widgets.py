@@ -1,7 +1,14 @@
 """A collection of widgets for the UI."""
 from typing import List, Tuple
 from PySide6 import QtCore, QtGui
-from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QPushButton, QApplication, QHBoxLayout
+from PySide6.QtWidgets import (
+    QMainWindow,
+    QLabel,
+    QWidget,
+    QVBoxLayout,
+    QPushButton,
+    QApplication,
+)
 
 
 class MainWidget(QMainWindow):
@@ -77,7 +84,8 @@ class CalibrationWidget(QMainWindow):
         trueMidY = screenGeometry.center().y() - CalibrationCircle.size / 2
         trueRight = screenGeometry.right() - CalibrationCircle.size
         trueTop = 0
-        # NOTE: Not sure if this is because my laptop has a notch, but this isn't actually the bottom?
+        # NOTE: Not sure if this is because my laptop has a notch, but this isn't actually the
+        # bottom?
         trueBottom = screenGeometry.bottom() - CalibrationCircle.size - 35
         # Top
         locs.append((trueLeft, trueTop))
