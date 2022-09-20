@@ -10,9 +10,15 @@ class MainWidget(QMainWindow):
     height = 240
 
     @QtCore.Slot()
+    def closeCalibrationWindow(self):
+        self.calibrationWindow.close()
+        self.showMaximized()
+
+    @QtCore.Slot()
     def openCalibrationWindow(self):
         self.calibrationWindow = CalibrationWidget()
         self.calibrationWindow.showFullScreen()
+        self.calibrationWindow.complete.connect(self.closeCalibrationWindow)
         self.showMinimized()
 
     def __init__(self):
@@ -59,6 +65,7 @@ class MainWidget(QMainWindow):
 
 class CalibrationWidget(QMainWindow):
     """Full-screen window with calibration steps."""
+    complete = QtCore.Signal()
 
     def getCircleLocations(self):
         # Get the screen geometry
@@ -113,8 +120,9 @@ class CalibrationWidget(QMainWindow):
         # If calibration has begun and the spacebar was pressed
         if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
             # Check if calibration is complete
-            if self.activeCircleIndex >= len(self.circles):
+            if self.activeCircleIndex >= len(self.circles) - 1:
                 # TODO: finish calibration
+                self.complete.emit()
                 return super().keyPressEvent(event)
             # Store and progress calibration
             # TODO: get pupil coordinates and store them
