@@ -1,7 +1,7 @@
-name: Lint
+name: Checks
 on: [push]
 jobs:
-  Lint:
+  Check-Style-And-Lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -14,6 +14,9 @@ jobs:
           pip install --upgrade pip
           pip install pipenv
           pipenv install --dev
+      - name: Check style
+        run: |
+          pipenv run black --diff --check src
       - name: Lint
         run: |
           pipenv run pylint -rn -sn src

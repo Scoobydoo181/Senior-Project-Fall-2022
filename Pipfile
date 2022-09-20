@@ -9,7 +9,7 @@ opencv-python = "*"
 
 [dev-packages]
 pylint = "*"
-black = "*"
+black = "~=22.8"
 
 [requires]
 python_version = "3.7"
