@@ -30,6 +30,7 @@ class MainWidget(QMainWindow):
         self.showMinimized()
 
     def __init__(self):
+        # pylint: disable=no-member
         super().__init__()
 
         # Remove window title
@@ -145,6 +146,7 @@ class CalibrationWidget(QMainWindow):
         return super().keyPressEvent(event)
 
     def drawInstructions(self):
+        # pylint: disable=no-member
         # Create widget
         container = QWidget()
         instructionsWidget = QWidget(container)

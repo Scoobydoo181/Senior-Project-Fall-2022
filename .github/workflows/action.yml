@@ -19,4 +19,4 @@ jobs:
           pipenv run black --diff --check src
       - name: Lint
         run: |
-          pipenv run pylint -rn -sn src
+          pipenv run pylint --errors-only src
