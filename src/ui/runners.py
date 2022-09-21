@@ -1,7 +1,7 @@
 """Handles running the UI elements."""
 import sys
 from PySide6.QtWidgets import QApplication
-from ui.widgets import MainWidget
+from widgets import MainWidget
 
 
 def launchUIThread():

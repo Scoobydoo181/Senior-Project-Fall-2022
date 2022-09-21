@@ -1,6 +1,6 @@
 from cv2 import cv2
 from detectEyes import detectEyes
-from ui import launchUIThread
+from ui.runners import launchUIThread
 
 
 def detectBlink(eyeCoords, blinkDuration):

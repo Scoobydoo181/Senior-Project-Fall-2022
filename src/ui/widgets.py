@@ -64,6 +64,7 @@ class MainWidget(QMainWindow):
         # Set the main window
         self.setCentralWidget(centralWidget)
         # Set the position and size of the main window
+        # TODO: top of window is hidden on windows
         self.setGeometry(
             QApplication.primaryScreen().availableGeometry().width() - MainWidget.width,
             0,
@@ -89,8 +90,7 @@ class CalibrationWidget(QMainWindow):
         trueMidY = screenGeometry.center().y() - CalibrationCircle.size / 2
         trueRight = screenGeometry.right() - CalibrationCircle.size
         trueTop = 0
-        # NOTE: Not sure if this is because my laptop has a notch, but this isn't actually the
-        # bottom?
+        # TODO: bottom is different on windows
         trueBottom = screenGeometry.bottom() - CalibrationCircle.size - 35
         # Top
         locs.append((trueLeft, trueTop))
