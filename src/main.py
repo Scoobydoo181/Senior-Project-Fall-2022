@@ -1,12 +1,11 @@
+from cv2 import cv2
 from detectEyes import detectEyes
-from ui.main import launchUIThread
-
-
-import cv2
+from ui import launchUIThread
 
 
 def detectBlink(eyeCoords, blinkDuration):
     pass
+
 
 def clickMouse(screenCoords):
     pass

@@ -2,3 +2,5 @@
 .python-version
 # Ignore cache files
 __pycache__
+# Ignore IDE config files
+.vscode
