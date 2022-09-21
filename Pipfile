@@ -6,6 +6,8 @@ name = "pypi"
 [packages]
 pyside6 = "*"
 opencv-python = "*"
+numpy = "*"
+scipy = "*"
 
 [dev-packages]
 pylint = "*"
