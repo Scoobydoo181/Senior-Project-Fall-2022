@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QPushButton,
     QApplication,
+    QHBoxLayout,
 )
 
 
@@ -16,11 +17,14 @@ class MainWidget(QMainWindow):
 
     width = 360
     height = 240
+    margin = 40
 
     @QtCore.Slot()
     def closeCalibrationWindow(self):
         self.calibrationWindow.close()
-        self.showMaximized()
+        self.calibrationWindow = None
+        self.showNormal()
+        self.positionInTopRightCorner()
 
     @QtCore.Slot()
     def openCalibrationWindow(self):
@@ -29,9 +33,19 @@ class MainWidget(QMainWindow):
         self.calibrationWindow.complete.connect(self.closeCalibrationWindow)
         self.showMinimized()
 
+    def positionInTopRightCorner(self):
+        self.move(
+            QApplication.primaryScreen().availableGeometry().right()
+            - MainWidget.width
+            - MainWidget.margin,
+            QApplication.primaryScreen().availableGeometry().top() + MainWidget.margin,
+        )
+
     def __init__(self):
         # pylint: disable=no-member
         super().__init__()
+
+        self.calibrationWindow: CalibrationWidget = None
 
         # Remove window title
         self.setWindowTitle("Iris Software")
@@ -64,13 +78,7 @@ class MainWidget(QMainWindow):
         # Set the main window
         self.setCentralWidget(centralWidget)
         # Set the position and size of the main window
-        # TODO: top of window is hidden on windows
-        self.setGeometry(
-            QApplication.primaryScreen().availableGeometry().width() - MainWidget.width,
-            0,
-            MainWidget.width,
-            MainWidget.height,
-        )
+        self.positionInTopRightCorner()
         # Lock the width and height of the window
         self.setFixedSize(MainWidget.width, MainWidget.height)
 
@@ -110,8 +118,6 @@ class CalibrationWidget(QMainWindow):
     def drawCircles(self):
         # Create widget
         circlesWidget = QWidget()
-        # Store calibration circles
-        self.circles: List[CalibrationCircle] = []
         # Get the circle locations
         locs = self.getCircleLocations()
         # Draw the circles
@@ -126,7 +132,6 @@ class CalibrationWidget(QMainWindow):
         # Draw circles
         self.drawCircles()
         # Activate the first circle
-        self.activeCircleIndex = 0
         self.circles[self.activeCircleIndex].toggleActive()
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
@@ -145,6 +150,10 @@ class CalibrationWidget(QMainWindow):
 
         return super().keyPressEvent(event)
 
+    @QtCore.Slot()
+    def cancelCalibration(self):
+        self.complete.emit()
+
     def drawInstructions(self):
         # pylint: disable=no-member
         # Create widget
@@ -160,10 +169,19 @@ class CalibrationWidget(QMainWindow):
         layout.addWidget(instructions)
         # Add container to widget
         instructionsWidget.setLayout(layout)
-        # Add button to widget
+        # Add button container
+        buttons = QWidget()
+        layout.addWidget(buttons)
+        buttonsLayout = QHBoxLayout()
+        buttons.setLayout(buttonsLayout)
+        # Add cancel button to widget
+        cancelButton = QPushButton("Cancel")
+        cancelButton.clicked.connect(self.cancelCalibration)
+        buttonsLayout.addWidget(cancelButton)
+        # Add begin button to widget
         beginButton = QPushButton("Begin Calibration")
         beginButton.clicked.connect(self.beginCalibration)
-        layout.addWidget(beginButton)
+        buttonsLayout.addWidget(beginButton)
         # Position the widget
         instructionsWidget.setParent(container)
         (centerX, centerY) = (
@@ -179,6 +197,10 @@ class CalibrationWidget(QMainWindow):
 
         # Remove window title
         self.setWindowTitle("Iris Software - Calibration")
+
+        # Set up attributes
+        self.activeCircleIndex: int = 0
+        self.circles: List[CalibrationCircle] = []
 
         # Draw the instructions
         self.drawInstructions()
