@@ -78,16 +78,7 @@ class MainWidget(QMainWindow):
         # Set the main window
         self.setCentralWidget(centralWidget)
         # Set the position and size of the main window
-<<<<<<< HEAD
-        self.setGeometry(
-            QApplication.primaryScreen().availableGeometry().width() - MainWidget.width,
-            100,
-            MainWidget.width,
-            MainWidget.height,
-        )
-=======
         self.positionInTopRightCorner()
->>>>>>> 42289e28dd531eddfa6ee5e980a900a639f56de8
         # Lock the width and height of the window
         self.setFixedSize(MainWidget.width, MainWidget.height)
 
