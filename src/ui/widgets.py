@@ -66,7 +66,7 @@ class MainWidget(QMainWindow):
         # Set the position and size of the main window
         self.setGeometry(
             QApplication.primaryScreen().availableGeometry().width() - MainWidget.width,
-            0,
+            100,
             MainWidget.width,
             MainWidget.height,
         )
