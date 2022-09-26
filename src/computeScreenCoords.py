@@ -1,7 +1,10 @@
 from enum import Enum
 import numpy as np
+from sklearn.linear_model import LinearRegression
+import pandas as pd 
 from scipy.interpolate import LinearNDInterpolator
 from typing import List, Tuple
+
 class InterpolationType(Enum):
     LINEAR = 1
     RBF_LINEAR = 2
@@ -14,6 +17,18 @@ def unpackScreenCoords(screenCoords):
     screenXCoords, screenYCoords = zip(*screenCoords)
     return (list(screenXCoords), list(screenYCoords))
 
+class LinearRegression():
+    def __init__(self, eyeCoords: List[Tuple], screenXCoords: List, screenYCoords: List):
+        df_X = pd.DataFrame(eyeCoords)
+        # TODO: restructure to perform unpacking in models instead of beforehand to account for differences in implementations
+        df_Y = pd.DataFrame(zip(screenXCoords, screenYCoords))
+        self.model = LinearRegression()
+        self.model.fit(df_X, df_Y)
+    def computeScreenCoords(self, eyeCoords):
+        df_X = pd.DataFrame(eyeCoords)
+        prediction = self.model.predict(df_X)
+        return list(prediction.itertuples(index=False, name=None))
+        
 class LinearInterpolator():
     def __init__(self, eyeCoords: List[Tuple], screenXCoords: List, screenYCoords: List):
         self.xInterpolator = LinearNDInterpolator(eyeCoords, screenXCoords)

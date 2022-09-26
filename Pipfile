@@ -8,6 +8,8 @@ pyside6 = "*"
 opencv-python = "*"
 numpy = "*"
 scipy = "*"
+pandas = "*"
+sklearn = "*"
 
 [dev-packages]
 pylint = "*"
