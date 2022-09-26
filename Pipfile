@@ -7,6 +7,10 @@ name = "pypi"
 pyside6 = "*"
 opencv-python = "*"
 pyautogui = "*"
+numpy = "*"
+scipy = "*"
+pandas = "*"
+sklearn = "*"
 
 [dev-packages]
 pylint = "*"
