@@ -38,13 +38,13 @@ if __name__ == "__main__":
 
         didBlink = detectBlink(eyeCoords, blinkDuration)
 
-        x, y = computeScreenCoords(eyeCoords)
+        screenX, screenY = computeScreenCoords(eyeCoords)
 
         if didBlink:
             clickMouse(screenCoords)
 
         # Move mouse
-        pyautogui.moveTo(x, y)
+        pyautogui.moveTo(screenX, screenY)
 
         if menuKeyPressed():
             launchUIThread()
