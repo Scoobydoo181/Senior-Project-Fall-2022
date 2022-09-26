@@ -33,6 +33,7 @@ if __name__ == "__main__":
 
         _, image = camera.read()
 
+        # [(x1, y1), (x2, y2), ...]
         eyeCoords = detectEyes(image, eyeDetector)
 
         didBlink = detectBlink(eyeCoords, blinkDuration)
