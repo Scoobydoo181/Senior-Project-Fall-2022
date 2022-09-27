@@ -1,6 +1,9 @@
 """Main file holding code responsible for running the program."""
 import os
 import pickle
+import sys
+import threading
+from time import sleep
 from typing import Any
 from PySide6 import QtCore
 from numpy import ndarray
@@ -26,6 +29,7 @@ class IrisSoftware:
         self.detectorParams.maxArea = 1500
         self.blobDetector = cv2.SimpleBlobDetector_create(self.detectorParams)
         # Classes & objects
+        self.camera = cv2.VideoCapture(0)
         self.ui = UI()
 
     def detectBlink(self, eyeCoords, blinkDuration) -> Any:
@@ -33,6 +37,25 @@ class IrisSoftware:
 
     def clickMouse(self, screenX, screenY):
         pass
+
+    @QtCore.Slot()
+    def handleNeedsCalibrationFrame(self):
+        # Capture the current frame from the camera
+        _, frame = self.camera.read()
+        # Get eye coordinates
+        eyeCoords = detectEyes(
+            frame,
+            DetectionType.EYE_CASCADE_BLOB,
+            self.eyeDetector,
+            self.blobDetector,
+        )
+
+        # Draw circles around the eyes
+        for (x, y) in eyeCoords:
+            cv2.circle(frame, (x, y), 7, (0, 0, 255), 2)
+
+        # Pass the frame to the UI
+        self.ui.emitReceivedCalibrationFrame(frame)
 
     @QtCore.Slot(list)
     def handleCalibrationFrames(self, frames):
@@ -55,33 +78,37 @@ class IrisSoftware:
         # Close calibration window
         self.ui.emitCloseCalibrationWidget()
 
-    @QtCore.Slot(ndarray)
-    def handleCameraFrame(self, frame):
-        """Runs every time the camera receives a frame."""
-        # Get eye coordinates
-        eyeCoords = detectEyes(
-            frame, DetectionType.EYE_CASCADE_BLOB, self.eyeDetector, self.blobDetector
-        )
+    def processing(self):
+        while True:
+            # Capture the current frame from the camera
+            _, frame = self.camera.read()
+            # Get eye coordinates
+            eyeCoords = detectEyes(
+                frame,
+                DetectionType.EYE_CASCADE_BLOB,
+                self.eyeDetector,
+                self.blobDetector,
+            )
 
-        # Draw circles around the eyes
-        for (x, y) in eyeCoords:
-            cv2.circle(frame, (x, y), 7, (0, 0, 255), 2)
+            # Draw circles around the eyes
+            for (x, y) in eyeCoords:
+                cv2.circle(frame, (x, y), 7, (0, 0, 255), 2)
 
-        # Return adjusted frame to UI
-        self.ui.emitAdjustedCameraFrame(frame)
+            # Pass the frame to the UI
+            self.ui.emitReceivedCameraFrame(frame)
 
-        # # Check for blinks
-        # didBlink = self.detectBlink(eyeCoords, self.blinkDuration)
+            # # Check for blinks
+            # didBlink = self.detectBlink(eyeCoords, self.blinkDuration)
 
-        # # Determine screen coordinates from eye coordinates
-        # screenX, screenY = computeScreenCoords(eyeCoords)
+            # # Determine screen coordinates from eye coordinates
+            # screenX, screenY = computeScreenCoords(eyeCoords)
 
-        # # Click the mouse if the user has blinked
-        # if didBlink:
-        #     clickMouse(screenX, screenY)
+            # # Click the mouse if the user has blinked
+            # if didBlink:
+            #     clickMouse(screenX, screenY)
 
-        # # Move the mouse based on the eye coordinates
-        # pyautogui.moveTo(screenX, screenY)
+            # # Move the mouse based on the eye coordinates
+            # pyautogui.moveTo(screenX, screenY)
 
     def run(self) -> None:
         print("Starting Iris Software...")
@@ -89,13 +116,17 @@ class IrisSoftware:
         if os.path.exists(CALIBRATION_FILE_NAME):
             self.isCalibrated = True
             with open(CALIBRATION_FILE_NAME, "rb") as handle:
-                print(pickle.load(handle))
                 # TODO: handle starting with calibration if the program is not calibrated yet
+                pass
+        # Spawn the processing thread
+        print("Spawning processing thread")
+        self.processingThread = threading.Thread(target=self.processing)
+        self.processingThread.start()
         # Connect IPC event handlers
-        self.ui.connectCameraFrameCallback(self.handleCameraFrame)
         self.ui.connectCalibrationFramesCallback(self.handleCalibrationFrames)
-        # Start the UI
-        self.ui.run()
+        self.ui.connectNeedsCalibrationFrameCallback(self.handleNeedsCalibrationFrame)
+        # Run the UI
+        sys.exit(self.ui.run())
 
 
 if __name__ == "__main__":

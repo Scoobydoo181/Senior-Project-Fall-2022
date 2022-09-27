@@ -20,10 +20,12 @@ CAMERA_FRAME_CAPTURE_TIME_MS = 4.166
 class MainWidget(QMainWindow):
     """Main widget showing the video stream in the corner."""
 
-    cameraFrameAvailable = QtCore.Signal(ndarray)
-    adjustedCameraFrameAvailable = QtCore.Signal(ndarray)
-    calibrationFramesAvailable = QtCore.Signal(list)
-    shouldCloseCalibrationWindow = QtCore.Signal()
+    receivedCameraFrame = QtCore.Signal(ndarray)
+    receivedCalibrationFrame = QtCore.Signal(tuple)
+    receivedCloseCalibrationWindow = QtCore.Signal()
+
+    emittedNeedsCalibrationFrame = QtCore.Signal()
+    emittedCalibrationFrames = QtCore.Signal(list)
 
     @QtCore.Slot()
     def handleCloseCalibrationWindow(self):
@@ -42,14 +44,12 @@ class MainWidget(QMainWindow):
 
     @QtCore.Slot()
     def emitCalibrationData(self):
-        self.calibrationFramesAvailable.emit(self.currentCalibrationFrames)
+        self.emittedCalibrationFrames.emit(self.currentCalibrationFrames)
 
     @QtCore.Slot()
     def captureCameraFrameForCalibration(self):
-        # Capture eye data
-        _, frame = self.capture.read()
-        # Store eye data
-        self.currentCalibrationFrames.append(frame)
+        # Request camera frame
+        self.emittedNeedsCalibrationFrame.emit()
 
     @QtCore.Slot(ndarray)
     def displayCameraFrame(self, frame):
@@ -58,6 +58,10 @@ class MainWidget(QMainWindow):
         frame = cv2.flip(frame, 1)
         image = qimage2ndarray.array2qimage(frame)
         self.videoPreview.setPixmap(QtGui.QPixmap.fromImage(image))
+
+    @QtCore.Slot(ndarray)
+    def storeCalibrationFrame(self, frame):
+        self.currentCalibrationFrames.append(frame)
 
     def closeCalibrationWindow(self):
         self.currentCalibrationFrames = []
@@ -100,18 +104,15 @@ class MainWidget(QMainWindow):
         # Set the position and size of the main window
         self.positionInTopRightCorner()
 
+    def setupSlotHandlers(self):
+        self.receivedCameraFrame.connect(self.displayCameraFrame)
+        self.receivedCalibrationFrame.connect(self.storeCalibrationFrame)
+        self.receivedCloseCalibrationWindow.connect(self.handleCloseCalibrationWindow)
+
     def setupCamera(self):
         self.capture = cv2.VideoCapture(0)
         self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.previewSize.width())
         self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.previewSize.height())
-
-        self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.emitCameraFrame)
-        self.timer.start(CAMERA_FRAME_CAPTURE_TIME_MS)
-
-    def emitCameraFrame(self):
-        _, frame = self.capture.read()
-        self.cameraFrameAvailable.emit(frame)
 
     def __init__(self):
         # pylint: disable=no-member
@@ -138,9 +139,7 @@ class MainWidget(QMainWindow):
 
         # Initialize
         self.setupUI()
-        self.setupCamera()
-        self.adjustedCameraFrameAvailable.connect(self.displayCameraFrame)
-        self.shouldCloseCalibrationWindow.connect(self.handleCloseCalibrationWindow)
+        self.setupSlotHandlers()
 
 
 class CalibrationWidget(QMainWindow):

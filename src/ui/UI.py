@@ -19,23 +19,26 @@ class UI:
         self.app = QApplication([])
         self.mainWidget = widgets.MainWidget()
 
-    def connectCameraFrameCallback(self, cb):
-        self.mainWidget.cameraFrameAvailable.connect(cb)
+    def connectNeedsCalibrationFrameCallback(self, cb):
+        self.mainWidget.emittedNeedsCalibrationFrame.connect(cb)
 
     def connectCalibrationFramesCallback(self, cb):
-        self.mainWidget.calibrationFramesAvailable.connect(cb)
+        self.mainWidget.emittedCalibrationFrames.connect(cb)
 
-    def emitAdjustedCameraFrame(self, frame):
-        self.mainWidget.adjustedCameraFrameAvailable.emit(frame)
+    def emitReceivedCameraFrame(self, frame):
+        self.mainWidget.receivedCameraFrame.emit(frame)
+
+    def emitReceivedCalibrationFrame(self, frame):
+        self.mainWidget.receivedCalibrationFrame.emit(frame)
 
     def emitCloseCalibrationWidget(self):
-        self.mainWidget.shouldCloseCalibrationWindow.emit()
+        self.mainWidget.receivedCloseCalibrationWindow.emit()
 
     def run(self):
         self.mainWidget.show()
-        sys.exit(self.app.exec())
+        return self.app.exec()
 
 
 if __name__ == "__main__":
     ui = UI()
-    ui.run()
+    sys.exit(ui.run())
