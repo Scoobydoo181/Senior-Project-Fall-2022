@@ -1,4 +1,5 @@
-from cv2 import cv2
+import pyautogui
+import cv2
 from detectEyes import detectEyes
 from ui.runners import launchUIThread
 
@@ -8,10 +9,6 @@ def detectBlink(eyeCoords, blinkDuration):
 
 
 def clickMouse(screenCoords):
-    pass
-
-
-def moveMouse(screenCoords):
     pass
 
 
@@ -36,16 +33,18 @@ if __name__ == "__main__":
 
         _, image = camera.read()
 
+        # [(x1, y1), (x2, y2), ...]
         eyeCoords = detectEyes(image, eyeDetector)
 
         didBlink = detectBlink(eyeCoords, blinkDuration)
 
-        screenCoords = computeScreenCoords(eyeCoords)
+        screenX, screenY = computeScreenCoords(eyeCoords)
 
         if didBlink:
             clickMouse(screenCoords)
 
-        moveMouse(eyeCoords)
+        # Move mouse
+        pyautogui.moveTo(screenX, screenY)
 
         if menuKeyPressed():
             launchUIThread()
