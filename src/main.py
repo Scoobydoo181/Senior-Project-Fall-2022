@@ -5,6 +5,7 @@ from typing import Any
 from PySide6 import QtCore
 from numpy import ndarray
 import cv2
+import pyautogui
 from detectEyes import detectEyes, DetectionType
 from computeScreenCoords import computeScreenCoords
 from ui.UI import UI, CALIBRATION_FILE_NAME
@@ -30,10 +31,7 @@ class IrisSoftware:
     def detectBlink(self, eyeCoords, blinkDuration) -> Any:
         pass
 
-    def clickMouse(self, screenCoords):
-        pass
-
-    def moveMouse(self, screenCoords):
+    def clickMouse(self, screenX, screenY):
         pass
 
     @QtCore.Slot(list)
@@ -76,14 +74,14 @@ class IrisSoftware:
         # didBlink = self.detectBlink(eyeCoords, self.blinkDuration)
 
         # # Determine screen coordinates from eye coordinates
-        # screenCoords = self.computeScreenCoords(eyeCoords)
+        # screenX, screenY = computeScreenCoords(eyeCoords)
 
         # # Click the mouse if the user has blinked
         # if didBlink:
-        #     clickMouse(screenCoords)
+        #     clickMouse(screenX, screenY)
 
         # # Move the mouse based on the eye coordinates
-        # moveMouse(eyeCoords)
+        # pyautogui.moveTo(screenX, screenY)
 
     def run(self) -> None:
         print("Starting Iris Software...")
