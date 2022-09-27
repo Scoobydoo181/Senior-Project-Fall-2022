@@ -17,13 +17,16 @@ from PySide6.QtWidgets import (
 )
 import cv2
 import qimage2ndarray
-from detectEyes import detectEyes, DetectionType
+from numpy import ndarray
 
 CALIBRATION_FILE_NAME = "calibrationData.pickle"
 
 
 class MainWidget(QMainWindow):
     """Main widget showing the video stream in the corner."""
+
+    cameraFrameAvailable = QtCore.Signal(ndarray)
+    adjustedCameraFrameAvailable = QtCore.Signal(ndarray)
 
     @QtCore.Slot()
     def cancelCalibration(self):
@@ -56,9 +59,17 @@ class MainWidget(QMainWindow):
     def captureEyeLocationForCalibration(self):
         # Capture eye data
         _, frame = self.capture.read()
+        print(type(frame))
         eyes = self.getEyesFromFrame(frame)
         # Store eye data
         self.currentCalibrationData.append(eyes)
+
+    @QtCore.Slot(ndarray)
+    def displayCameraFrame(self, frame):
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = cv2.flip(frame, 1)
+        image = qimage2ndarray.array2qimage(frame)
+        self.videoPreview.setPixmap(QtGui.QPixmap.fromImage(image))
 
     def closeCalibrationWindow(self):
         self.calibrationWindow.close()
@@ -106,37 +117,12 @@ class MainWidget(QMainWindow):
         self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.previewSize.height())
 
         self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.displayVideoStream)
+        self.timer.timeout.connect(self.emitCameraFrame)
         self.timer.start(15)
 
-    def drawPupilDetection(self, frame):
-        # TODO: move this code into a function/class in detectEyes.py
-        eyes = self.getEyesFromFrame(frame)
-        for (x, y) in eyes:
-            cv2.circle(frame, (x, y), 7, (0, 0, 255), 2)
-
-    def getEyesFromFrame(self, frame):
-        # TODO: move this code into a function/class in detectEyes.py
-        eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
-        detectorParams = cv2.SimpleBlobDetector_Params()
-        detectorParams.filterByArea = True
-        detectorParams.maxArea = 1500
-        blobDetector = cv2.SimpleBlobDetector_create(detectorParams)
-        eyes = detectEyes(
-            frame,
-            DetectionType.EYE_CASCADE_BLOB,
-            eyeDetector,
-            blobDetector,
-        )
-        return eyes
-
-    def displayVideoStream(self):
+    def emitCameraFrame(self):
         _, frame = self.capture.read()
-        self.drawPupilDetection(frame)
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = cv2.flip(frame, 1)
-        image = qimage2ndarray.array2qimage(frame)
-        self.videoPreview.setPixmap(QtGui.QPixmap.fromImage(image))
+        self.cameraFrameAvailable.emit(frame)
 
     def __init__(self):
         # pylint: disable=no-member
@@ -164,6 +150,7 @@ class MainWidget(QMainWindow):
         # Initialize
         self.setupUI()
         self.setupCamera()
+        self.adjustedCameraFrameAvailable.connect(self.displayCameraFrame)
 
 
 class CalibrationWidget(QMainWindow):
