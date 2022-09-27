@@ -14,8 +14,6 @@ import cv2
 import qimage2ndarray
 from numpy import ndarray
 
-CAMERA_FRAME_CAPTURE_TIME_MS = 4.166
-
 
 class MainWidget(QMainWindow):
     """Main widget showing the video stream in the corner."""
@@ -108,11 +106,6 @@ class MainWidget(QMainWindow):
         self.receivedCameraFrame.connect(self.displayCameraFrame)
         self.receivedCalibrationFrame.connect(self.storeCalibrationFrame)
         self.receivedCloseCalibrationWindow.connect(self.handleCloseCalibrationWindow)
-
-    def setupCamera(self):
-        self.capture = cv2.VideoCapture(0)
-        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.previewSize.width())
-        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.previewSize.height())
 
     def __init__(self):
         # pylint: disable=no-member
