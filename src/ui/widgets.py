@@ -1,5 +1,10 @@
-"""A collection of widgets for the UI."""
-from typing import List, Tuple
+"""A collection of widgets for the UI.
+
+Referenced snippet for combining cv2 with PySide6: https://gist.github.com/bsdnoobz/8464000
+"""
+from typing import Any, List, Tuple
+import os
+import pickle
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -10,54 +15,69 @@ from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
 )
+import cv2
+import qimage2ndarray
+from detectEyes import detectEyes, DetectionType
+
+CALIBRATION_FILE_NAME = "calibrationData.pickle"
 
 
 class MainWidget(QMainWindow):
     """Main widget showing the video stream in the corner."""
 
-    width = 360
-    height = 240
-    margin = 40
+    @QtCore.Slot()
+    def cancelCalibration(self):
+        self.closeCalibrationWindow()
 
     @QtCore.Slot()
+    def openCalibrationWindow(self):
+        self.calibrationWindow = CalibrationWidget()
+        self.calibrationWindow.showFullScreen()
+        self.calibrationWindow.completed.connect(self.finalizeCalibration)
+        self.calibrationWindow.cancelled.connect(self.cancelCalibration)
+        self.calibrationWindow.captureEyeData.connect(
+            self.captureEyeLocationForCalibration
+        )
+        self.showMinimized()
+
+    @QtCore.Slot()
+    def finalizeCalibration(self):
+        # Store calibration data in pickle file
+        if os.path.exists(CALIBRATION_FILE_NAME):
+            os.remove(CALIBRATION_FILE_NAME)
+        with open(CALIBRATION_FILE_NAME, "wb") as handle:
+            pickle.dump(self.currentCalibrationData, handle)
+        # Clear calibration data
+        self.currentCalibrationData = []
+        # Close calibration window
+        self.closeCalibrationWindow()
+
+    @QtCore.Slot()
+    def captureEyeLocationForCalibration(self):
+        # Capture eye data
+        _, frame = self.capture.read()
+        eyes = self.getEyesFromFrame(frame)
+        # Store eye data
+        self.currentCalibrationData.append(eyes)
+
     def closeCalibrationWindow(self):
         self.calibrationWindow.close()
         self.calibrationWindow = None
         self.showNormal()
         self.positionInTopRightCorner()
 
-    @QtCore.Slot()
-    def openCalibrationWindow(self):
-        self.calibrationWindow = CalibrationWidget()
-        self.calibrationWindow.showFullScreen()
-        self.calibrationWindow.complete.connect(self.closeCalibrationWindow)
-        self.showMinimized()
-
     def positionInTopRightCorner(self):
         self.move(
             QApplication.primaryScreen().availableGeometry().right()
-            - MainWidget.width
-            - MainWidget.margin,
-            QApplication.primaryScreen().availableGeometry().top() + MainWidget.margin,
+            - self.width()
+            - self.margin,
+            QApplication.primaryScreen().availableGeometry().top() + self.margin,
         )
 
-    def __init__(self):
-        # pylint: disable=no-member
-        super().__init__()
-
-        self.calibrationWindow: CalibrationWidget = None
-
-        # Remove window title
-        self.setWindowTitle("Iris Software")
-
-        # Set window always on top
-        self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
-
-        # Adjust the style
-        self.setStyleSheet("background-color: black; color: white")
-
-        # Create placeholder text
-        self.text = QLabel("Main Window", alignment=QtCore.Qt.AlignCenter)
+    def setupUI(self):
+        # Create video preview
+        self.videoPreview = QLabel()
+        self.videoPreview.setFixedSize(self.previewSize)
         # Create calibrate button
         self.calibrateButton = QPushButton("Calibrate")
         # Connect onClick
@@ -66,7 +86,7 @@ class MainWidget(QMainWindow):
         # Create layout container
         layout = QVBoxLayout()
         # Add placeholder text to container
-        layout.addWidget(self.text)
+        layout.addWidget(self.videoPreview)
         # Add calibrate button to container
         layout.addWidget(self.calibrateButton)
 
@@ -79,14 +99,90 @@ class MainWidget(QMainWindow):
         self.setCentralWidget(centralWidget)
         # Set the position and size of the main window
         self.positionInTopRightCorner()
-        # Lock the width and height of the window
-        self.setFixedSize(MainWidget.width, MainWidget.height)
+
+    def setupCamera(self):
+        self.capture = cv2.VideoCapture(0)
+        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.previewSize.width())
+        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.previewSize.height())
+
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.displayVideoStream)
+        self.timer.start(15)
+
+    def drawPupilDetection(self, frame):
+        # TODO: move this code into a function/class in detectEyes.py
+        eyes = self.getEyesFromFrame(frame)
+        for (x, y) in eyes:
+            cv2.circle(frame, (x, y), 7, (0, 0, 255), 2)
+
+    def getEyesFromFrame(self, frame):
+        # TODO: move this code into a function/class in detectEyes.py
+        eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
+        detectorParams = cv2.SimpleBlobDetector_Params()
+        detectorParams.filterByArea = True
+        detectorParams.maxArea = 1500
+        blobDetector = cv2.SimpleBlobDetector_create(detectorParams)
+        eyes = detectEyes(
+            frame,
+            DetectionType.EYE_CASCADE_BLOB,
+            eyeDetector,
+            blobDetector,
+        )
+        return eyes
+
+    def displayVideoStream(self):
+        _, frame = self.capture.read()
+        self.drawPupilDetection(frame)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = cv2.flip(frame, 1)
+        image = qimage2ndarray.array2qimage(frame)
+        self.videoPreview.setPixmap(QtGui.QPixmap.fromImage(image))
+
+    def __init__(self):
+        # pylint: disable=no-member
+        super().__init__()
+        # Properties
+        self.previewSize = QtCore.QSize(640, 480)
+        self.margin = 40
+        self.currentCalibrationData: List[Tuple[int]] = []
+
+        # Initialize UI elements
+        self.calibrationWindow: CalibrationWidget = None
+        self.videoPreview: QLabel = None
+        self.calibrateButton: QPushButton = None
+        # Initialize camera elements
+        self.capture: Any = None
+        self.timer: QtCore.QTimer = None
+
+        # Remove window title
+        self.setWindowTitle("Iris Software")
+        # Set window always on top
+        self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
+        # Adjust the style
+        self.setStyleSheet("background-color: black; color: white")
+
+        # Initialize
+        self.setupUI()
+        self.setupCamera()
 
 
 class CalibrationWidget(QMainWindow):
     """Full-screen window with calibration steps."""
 
-    complete = QtCore.Signal()
+    completed = QtCore.Signal()
+    cancelled = QtCore.Signal()
+    captureEyeData = QtCore.Signal()
+
+    @QtCore.Slot()
+    def cancelCalibration(self):
+        self.cancelled.emit()
+
+    @QtCore.Slot()
+    def beginCalibration(self):
+        # Draw circles
+        self.drawCircles()
+        # Activate the first circle
+        self.circles[self.activeCircleIndex].toggleActive()
 
     def getCircleLocations(self):
         # Get the screen geometry
@@ -127,34 +223,22 @@ class CalibrationWidget(QMainWindow):
         # Set as the central widget
         self.setCentralWidget(circlesWidget)
 
-    @QtCore.Slot()
-    def beginCalibration(self):
-        # Draw circles
-        self.drawCircles()
-        # Activate the first circle
-        self.circles[self.activeCircleIndex].toggleActive()
-
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         # If calibration has begun and the spacebar was pressed
         if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
             # Check if calibration is complete
             if self.activeCircleIndex >= len(self.circles) - 1:
-                # TODO: finish calibration
-                self.complete.emit()
+                self.completed.emit()
                 return super().keyPressEvent(event)
             # Store and progress calibration
-            # TODO: get pupil coordinates and store them
+            self.captureEyeData.emit()
             self.circles[self.activeCircleIndex].setParent(None)
             self.activeCircleIndex += 1
             self.circles[self.activeCircleIndex].toggleActive()
 
         return super().keyPressEvent(event)
 
-    @QtCore.Slot()
-    def cancelCalibration(self):
-        self.complete.emit()
-
-    def drawInstructions(self):
+    def setupUI(self):
         # pylint: disable=no-member
         # Create widget
         container = QWidget()
@@ -202,8 +286,7 @@ class CalibrationWidget(QMainWindow):
         self.activeCircleIndex: int = 0
         self.circles: List[CalibrationCircle] = []
 
-        # Draw the instructions
-        self.drawInstructions()
+        self.setupUI()
 
 
 class CalibrationCircle(QPushButton):

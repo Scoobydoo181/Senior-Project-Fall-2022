@@ -42,7 +42,7 @@ def eyeCascadeDetector(image, detector):
     return detector.detectMultiScale(gray)
 
 def tupleAdd(tuple, a, b):
-    print("Blob detected")
+    # print("Blob detected")
     return (round(tuple[0] + a), round(tuple[1] + b))
 
 def eyeCascadeBlobDetector(image, eyeDetector, blobDetector, demo=False):

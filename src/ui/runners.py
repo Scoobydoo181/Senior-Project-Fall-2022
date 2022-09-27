@@ -1,13 +1,13 @@
 """Handles running the UI elements."""
 import sys
 from PySide6.QtWidgets import QApplication
-from widgets import MainWidget
+from . import widgets
 
 
 def launchUIThread():
     app = QApplication([])
 
-    widget = MainWidget()
+    widget = widgets.MainWidget()
     widget.show()
 
     sys.exit(app.exec())
