@@ -1,12 +1,9 @@
 """Main file holding code responsible for running the program."""
 import os
 import pickle
-import sys
 import threading
-from time import sleep
 from typing import Any
 from PySide6 import QtCore
-from numpy import ndarray
 import cv2
 import pyautogui
 from detectEyes import detectEyes, DetectionType
@@ -20,17 +17,33 @@ class IrisSoftware:
     def __init__(self) -> None:
         print("Initializing Iris Software...")
         # Properties & config
+        self.shouldExit = False
         self.isCalibrated = False
         self.settings = {}
+        # TODO: we should put the following inside of a class for detectEyes
         self.blinkDuration = 0
         self.eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
         self.detectorParams = cv2.SimpleBlobDetector_Params()
         self.detectorParams.filterByArea = True
         self.detectorParams.maxArea = 1500
         self.blobDetector = cv2.SimpleBlobDetector_create(self.detectorParams)
+        # END TODO
+
         # Classes & objects
         self.camera = cv2.VideoCapture(0)
         self.ui = UI()
+
+        # Threads
+        self.processingThread: threading.Thread
+
+        # Load any saved data
+
+        # Load calibration data
+        if os.path.exists(CALIBRATION_FILE_NAME):
+            self.isCalibrated = True
+            with open(CALIBRATION_FILE_NAME, "rb") as handle:
+                # TODO
+                pass
 
     def detectBlink(self, eyeCoords, blinkDuration) -> Any:
         pass
@@ -69,17 +82,20 @@ class IrisSoftware:
                 self.blobDetector,
             )
             eyeCoordsMatrix.append(eyeCoords)
+
         # Remove the old calibration data, if it exists
         if os.path.exists(CALIBRATION_FILE_NAME):
             os.remove(CALIBRATION_FILE_NAME)
+
         # Store calibration data in pickle file
         with open(CALIBRATION_FILE_NAME, "wb") as handle:
             pickle.dump(eyeCoordsMatrix, handle)
+
         # Close calibration window
         self.ui.emitCloseCalibrationWidget()
 
     def processing(self):
-        while True:
+        while not self.shouldExit:
             # Capture the current frame from the camera
             _, frame = self.camera.read()
             # Get eye coordinates
@@ -109,24 +125,23 @@ class IrisSoftware:
 
             # # Move the mouse based on the eye coordinates
             # pyautogui.moveTo(screenX, screenY)
+        # TODO: handle any teardown steps
 
     def run(self) -> None:
         print("Starting Iris Software...")
-        # Check for calibration data
-        if os.path.exists(CALIBRATION_FILE_NAME):
-            self.isCalibrated = True
-            with open(CALIBRATION_FILE_NAME, "rb") as handle:
-                # TODO: handle starting with calibration if the program is not calibrated yet
-                pass
         # Spawn the processing thread
-        print("Spawning processing thread")
+        print("Launching processing thread...")
         self.processingThread = threading.Thread(target=self.processing)
         self.processingThread.start()
         # Connect IPC event handlers
+        print("Connecting UI callbacks...")
         self.ui.connectCalibrationFramesCallback(self.handleCalibrationFrames)
         self.ui.connectNeedsCalibrationFrameCallback(self.handleNeedsCalibrationFrame)
         # Run the UI
-        sys.exit(self.ui.run())
+        print("Launching the UI...")
+        self.ui.run()
+        # Tell all threads to exit
+        self.shouldExit = True
 
 
 if __name__ == "__main__":
