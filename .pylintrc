@@ -25,7 +25,9 @@ variable-rgx=[a-z][a-zA-Z0-9]*$
 
 inlinevar-rgx=[a-z][a-zA-Z0-9]*$
 
-extension-pkg-whitelist=PySide6
+extension-pkg-whitelist=
+    PySide6,
+    cv2
 
 [MESSAGES CONTROL]
 

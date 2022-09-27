@@ -6,8 +6,8 @@ from PySide6 import QtCore
 from numpy import ndarray
 import cv2
 from detectEyes import detectEyes, DetectionType
-from ui.UI import UI
-from ui.widgets import CALIBRATION_FILE_NAME
+from computeScreenCoords import computeScreenCoords
+from ui.UI import UI, CALIBRATION_FILE_NAME
 
 
 class IrisSoftware:
@@ -15,7 +15,7 @@ class IrisSoftware:
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
-        # Properties
+        # Properties & config
         self.isCalibrated = False
         self.settings = {}
         self.blinkDuration = 0
@@ -24,7 +24,7 @@ class IrisSoftware:
         self.detectorParams.filterByArea = True
         self.detectorParams.maxArea = 1500
         self.blobDetector = cv2.SimpleBlobDetector_create(self.detectorParams)
-        # Classes
+        # Classes & objects
         self.ui = UI()
 
     def detectBlink(self, eyeCoords, blinkDuration) -> Any:
@@ -36,11 +36,30 @@ class IrisSoftware:
     def moveMouse(self, screenCoords):
         pass
 
-    def computeScreenCoords(self, eyeCoords) -> Any:
-        pass
+    @QtCore.Slot(list)
+    def handleCalibrationFrames(self, frames):
+        # Convert frames into eye coordinates
+        eyeCoordsMatrix = []
+        for frame in frames:
+            eyeCoords = detectEyes(
+                frame,
+                DetectionType.EYE_CASCADE_BLOB,
+                self.eyeDetector,
+                self.blobDetector,
+            )
+            eyeCoordsMatrix.append(eyeCoords)
+        # Remove the old calibration data, if it exists
+        if os.path.exists(CALIBRATION_FILE_NAME):
+            os.remove(CALIBRATION_FILE_NAME)
+        # Store calibration data in pickle file
+        with open(CALIBRATION_FILE_NAME, "wb") as handle:
+            pickle.dump(eyeCoordsMatrix, handle)
+        # Close calibration window
+        self.ui.emitCloseCalibrationWidget()
 
     @QtCore.Slot(ndarray)
     def handleCameraFrame(self, frame):
+        """Runs every time the camera receives a frame."""
         # Get eye coordinates
         eyeCoords = detectEyes(
             frame, DetectionType.EYE_CASCADE_BLOB, self.eyeDetector, self.blobDetector
@@ -74,8 +93,10 @@ class IrisSoftware:
             with open(CALIBRATION_FILE_NAME, "rb") as handle:
                 print(pickle.load(handle))
                 # TODO: handle starting with calibration if the program is not calibrated yet
-        # Start UI
+        # Connect IPC event handlers
         self.ui.connectCameraFrameCallback(self.handleCameraFrame)
+        self.ui.connectCalibrationFramesCallback(self.handleCalibrationFrames)
+        # Start the UI
         self.ui.run()
 
 

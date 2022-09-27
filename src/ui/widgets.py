@@ -1,10 +1,5 @@
-"""A collection of widgets for the UI.
-
-Referenced snippet for combining cv2 with PySide6: https://gist.github.com/bsdnoobz/8464000
-"""
+"""A collection of widgets for the UI."""
 from typing import Any, List, Tuple
-import os
-import pickle
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -19,7 +14,7 @@ import cv2
 import qimage2ndarray
 from numpy import ndarray
 
-CALIBRATION_FILE_NAME = "calibrationData.pickle"
+CAMERA_FRAME_CAPTURE_TIME_MS = 4.166
 
 
 class MainWidget(QMainWindow):
@@ -27,51 +22,45 @@ class MainWidget(QMainWindow):
 
     cameraFrameAvailable = QtCore.Signal(ndarray)
     adjustedCameraFrameAvailable = QtCore.Signal(ndarray)
+    calibrationFramesAvailable = QtCore.Signal(list)
+    shouldCloseCalibrationWindow = QtCore.Signal()
 
     @QtCore.Slot()
-    def cancelCalibration(self):
+    def handleCloseCalibrationWindow(self):
         self.closeCalibrationWindow()
 
     @QtCore.Slot()
     def openCalibrationWindow(self):
         self.calibrationWindow = CalibrationWidget()
         self.calibrationWindow.showFullScreen()
-        self.calibrationWindow.completed.connect(self.finalizeCalibration)
-        self.calibrationWindow.cancelled.connect(self.cancelCalibration)
-        self.calibrationWindow.captureEyeData.connect(
-            self.captureEyeLocationForCalibration
+        self.calibrationWindow.completed.connect(self.emitCalibrationData)
+        self.calibrationWindow.cancelled.connect(self.handleCloseCalibrationWindow)
+        self.calibrationWindow.shouldCaptureFrame.connect(
+            self.captureCameraFrameForCalibration
         )
         self.showMinimized()
 
     @QtCore.Slot()
-    def finalizeCalibration(self):
-        # Store calibration data in pickle file
-        if os.path.exists(CALIBRATION_FILE_NAME):
-            os.remove(CALIBRATION_FILE_NAME)
-        with open(CALIBRATION_FILE_NAME, "wb") as handle:
-            pickle.dump(self.currentCalibrationData, handle)
-        # Clear calibration data
-        self.currentCalibrationData = []
-        # Close calibration window
-        self.closeCalibrationWindow()
+    def emitCalibrationData(self):
+        self.calibrationFramesAvailable.emit(self.currentCalibrationFrames)
 
     @QtCore.Slot()
-    def captureEyeLocationForCalibration(self):
+    def captureCameraFrameForCalibration(self):
         # Capture eye data
         _, frame = self.capture.read()
-        print(type(frame))
-        eyes = self.getEyesFromFrame(frame)
         # Store eye data
-        self.currentCalibrationData.append(eyes)
+        self.currentCalibrationFrames.append(frame)
 
     @QtCore.Slot(ndarray)
     def displayCameraFrame(self, frame):
+        """This function references the following snippet: https://gist.github.com/bsdnoobz/8464000"""
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.flip(frame, 1)
         image = qimage2ndarray.array2qimage(frame)
         self.videoPreview.setPixmap(QtGui.QPixmap.fromImage(image))
 
     def closeCalibrationWindow(self):
+        self.currentCalibrationFrames = []
         self.calibrationWindow.close()
         self.calibrationWindow = None
         self.showNormal()
@@ -118,7 +107,7 @@ class MainWidget(QMainWindow):
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.emitCameraFrame)
-        self.timer.start(15)
+        self.timer.start(CAMERA_FRAME_CAPTURE_TIME_MS)
 
     def emitCameraFrame(self):
         _, frame = self.capture.read()
@@ -130,7 +119,7 @@ class MainWidget(QMainWindow):
         # Properties
         self.previewSize = QtCore.QSize(640, 480)
         self.margin = 40
-        self.currentCalibrationData: List[Tuple[int]] = []
+        self.currentCalibrationFrames = []
 
         # Initialize UI elements
         self.calibrationWindow: CalibrationWidget = None
@@ -151,6 +140,7 @@ class MainWidget(QMainWindow):
         self.setupUI()
         self.setupCamera()
         self.adjustedCameraFrameAvailable.connect(self.displayCameraFrame)
+        self.shouldCloseCalibrationWindow.connect(self.handleCloseCalibrationWindow)
 
 
 class CalibrationWidget(QMainWindow):
@@ -158,7 +148,7 @@ class CalibrationWidget(QMainWindow):
 
     completed = QtCore.Signal()
     cancelled = QtCore.Signal()
-    captureEyeData = QtCore.Signal()
+    shouldCaptureFrame = QtCore.Signal()
 
     @QtCore.Slot()
     def cancelCalibration(self):
@@ -218,7 +208,7 @@ class CalibrationWidget(QMainWindow):
                 self.completed.emit()
                 return super().keyPressEvent(event)
             # Store and progress calibration
-            self.captureEyeData.emit()
+            self.shouldCaptureFrame.emit()
             self.circles[self.activeCircleIndex].setParent(None)
             self.activeCircleIndex += 1
             self.circles[self.activeCircleIndex].toggleActive()
