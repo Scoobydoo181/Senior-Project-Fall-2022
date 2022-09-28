@@ -1,5 +1,5 @@
 """A collection of widgets for the UI."""
-from typing import List, Tuple
+from typing import Any, List, Tuple
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -10,54 +10,76 @@ from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
 )
+import cv2
+import qimage2ndarray
+from numpy import ndarray
 
 
 class MainWidget(QMainWindow):
     """Main widget showing the video stream in the corner."""
 
-    width = 360
-    height = 240
-    margin = 40
+    receivedCameraFrame = QtCore.Signal(ndarray)
+    receivedCalibrationFrame = QtCore.Signal(tuple)
+    receivedCloseCalibrationWindow = QtCore.Signal()
+
+    emittedNeedsCalibrationFrame = QtCore.Signal()
+    emittedCalibrationFrames = QtCore.Signal(list)
 
     @QtCore.Slot()
-    def closeCalibrationWindow(self):
-        self.calibrationWindow.close()
-        self.calibrationWindow = None
-        self.showNormal()
-        self.positionInTopRightCorner()
+    def handleCloseCalibrationWindow(self):
+        self.closeCalibrationWindow()
 
     @QtCore.Slot()
     def openCalibrationWindow(self):
         self.calibrationWindow = CalibrationWidget()
         self.calibrationWindow.showFullScreen()
-        self.calibrationWindow.complete.connect(self.closeCalibrationWindow)
+        self.calibrationWindow.completed.connect(self.emitCalibrationData)
+        self.calibrationWindow.cancelled.connect(self.handleCloseCalibrationWindow)
+        self.calibrationWindow.shouldCaptureFrame.connect(
+            self.captureCameraFrameForCalibration
+        )
         self.showMinimized()
+
+    @QtCore.Slot()
+    def emitCalibrationData(self):
+        self.emittedCalibrationFrames.emit(self.currentCalibrationFrames)
+
+    @QtCore.Slot()
+    def captureCameraFrameForCalibration(self):
+        # Request camera frame
+        self.emittedNeedsCalibrationFrame.emit()
+
+    @QtCore.Slot(ndarray)
+    def displayCameraFrame(self, frame):
+        """This function references the following snippet: https://gist.github.com/bsdnoobz/8464000"""
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = cv2.flip(frame, 1)
+        image = qimage2ndarray.array2qimage(frame)
+        self.videoPreview.setPixmap(QtGui.QPixmap.fromImage(image))
+
+    @QtCore.Slot(ndarray)
+    def storeCalibrationFrame(self, frame):
+        self.currentCalibrationFrames.append(frame)
+
+    def closeCalibrationWindow(self):
+        self.currentCalibrationFrames = []
+        self.calibrationWindow.close()
+        self.calibrationWindow = None
+        self.showNormal()
+        self.positionInTopRightCorner()
 
     def positionInTopRightCorner(self):
         self.move(
             QApplication.primaryScreen().availableGeometry().right()
-            - MainWidget.width
-            - MainWidget.margin,
-            QApplication.primaryScreen().availableGeometry().top() + MainWidget.margin,
+            - self.width()
+            - self.margin,
+            QApplication.primaryScreen().availableGeometry().top() + self.margin,
         )
 
-    def __init__(self):
-        # pylint: disable=no-member
-        super().__init__()
-
-        self.calibrationWindow: CalibrationWidget = None
-
-        # Remove window title
-        self.setWindowTitle("Iris Software")
-
-        # Set window always on top
-        self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
-
-        # Adjust the style
-        self.setStyleSheet("background-color: black; color: white")
-
-        # Create placeholder text
-        self.text = QLabel("Main Window", alignment=QtCore.Qt.AlignCenter)
+    def setupUI(self):
+        # Create video preview
+        self.videoPreview = QLabel()
+        self.videoPreview.setFixedSize(self.previewSize)
         # Create calibrate button
         self.calibrateButton = QPushButton("Calibrate")
         # Connect onClick
@@ -66,7 +88,7 @@ class MainWidget(QMainWindow):
         # Create layout container
         layout = QVBoxLayout()
         # Add placeholder text to container
-        layout.addWidget(self.text)
+        layout.addWidget(self.videoPreview)
         # Add calibrate button to container
         layout.addWidget(self.calibrateButton)
 
@@ -79,14 +101,57 @@ class MainWidget(QMainWindow):
         self.setCentralWidget(centralWidget)
         # Set the position and size of the main window
         self.positionInTopRightCorner()
-        # Lock the width and height of the window
-        self.setFixedSize(MainWidget.width, MainWidget.height)
+
+    def setupSlotHandlers(self):
+        self.receivedCameraFrame.connect(self.displayCameraFrame)
+        self.receivedCalibrationFrame.connect(self.storeCalibrationFrame)
+        self.receivedCloseCalibrationWindow.connect(self.handleCloseCalibrationWindow)
+
+    def __init__(self):
+        # pylint: disable=no-member
+        super().__init__()
+        # Properties
+        self.previewSize = QtCore.QSize(640, 480)
+        self.margin = 40
+        self.currentCalibrationFrames = []
+
+        # Initialize UI elements
+        self.calibrationWindow: CalibrationWidget = None
+        self.videoPreview: QLabel = None
+        self.calibrateButton: QPushButton = None
+        # Initialize camera elements
+        self.capture: Any = None
+        self.timer: QtCore.QTimer = None
+
+        # Remove window title
+        self.setWindowTitle("Iris Software")
+        # Set window always on top
+        self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
+        # Adjust the style
+        self.setStyleSheet("background-color: black; color: white")
+
+        # Initialize
+        self.setupUI()
+        self.setupSlotHandlers()
 
 
 class CalibrationWidget(QMainWindow):
     """Full-screen window with calibration steps."""
 
-    complete = QtCore.Signal()
+    completed = QtCore.Signal()
+    cancelled = QtCore.Signal()
+    shouldCaptureFrame = QtCore.Signal()
+
+    @QtCore.Slot()
+    def cancelCalibration(self):
+        self.cancelled.emit()
+
+    @QtCore.Slot()
+    def beginCalibration(self):
+        # Draw circles
+        self.drawCircles()
+        # Activate the first circle
+        self.circles[self.activeCircleIndex].toggleActive()
 
     def getCircleLocations(self):
         # Get the screen geometry
@@ -127,34 +192,22 @@ class CalibrationWidget(QMainWindow):
         # Set as the central widget
         self.setCentralWidget(circlesWidget)
 
-    @QtCore.Slot()
-    def beginCalibration(self):
-        # Draw circles
-        self.drawCircles()
-        # Activate the first circle
-        self.circles[self.activeCircleIndex].toggleActive()
-
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         # If calibration has begun and the spacebar was pressed
         if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
             # Check if calibration is complete
             if self.activeCircleIndex >= len(self.circles) - 1:
-                # TODO: finish calibration
-                self.complete.emit()
+                self.completed.emit()
                 return super().keyPressEvent(event)
             # Store and progress calibration
-            # TODO: get pupil coordinates and store them
+            self.shouldCaptureFrame.emit()
             self.circles[self.activeCircleIndex].setParent(None)
             self.activeCircleIndex += 1
             self.circles[self.activeCircleIndex].toggleActive()
 
         return super().keyPressEvent(event)
 
-    @QtCore.Slot()
-    def cancelCalibration(self):
-        self.complete.emit()
-
-    def drawInstructions(self):
+    def setupUI(self):
         # pylint: disable=no-member
         # Create widget
         container = QWidget()
@@ -202,8 +255,7 @@ class CalibrationWidget(QMainWindow):
         self.activeCircleIndex: int = 0
         self.circles: List[CalibrationCircle] = []
 
-        # Draw the instructions
-        self.drawInstructions()
+        self.setupUI()
 
 
 class CalibrationCircle(QPushButton):
