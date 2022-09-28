@@ -10,7 +10,8 @@ pyautogui = "*"
 numpy = "*"
 scipy = "*"
 pandas = "*"
-sklearn = "*"
+scikit-learn = "*"
+qimage2ndarray = "*"
 
 [dev-packages]
 pylint = "*"
