@@ -14,10 +14,10 @@ The goal of this project is to use machine learning and a webcam to make gaze tr
 
 > Note: we have opted to use pipenv for its simplicity and consistency. Pipenv creates a virtual environment with all of the dependencies installed in that environment. To get IDE suggestions and autocomplete, you will have to point your editor to the pipenv virtual environment created for the project. For more information about pipenv, see their [website](https://pipenv.pypa.io/en/latest/).
 
-1. Make sure you are on Python `v3.7.13`.
+1. Make sure you are on Python `v3.9.13`.
 2. Install our dependency & virtual environment manager by running `pip install pipenv` or `pip3 install pipenv`.
 3. To install project dependencies, run `pipenv install --dev` in the project's root directory.
-4. To run the project with the installed dependencies, run `pipenv run python FILE_NAME.py`.
+4. To run the project with the installed dependencies, run `pipenv run python src/main.py`.
 
 #### Installing Dependencies
 
