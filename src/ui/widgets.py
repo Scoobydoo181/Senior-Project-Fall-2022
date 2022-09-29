@@ -108,11 +108,11 @@ class MainWidget(QMainWindow):
         self.receivedCalibrationFrame.connect(self.storeCalibrationFrame)
         self.receivedCloseCalibrationWindow.connect(self.handleCloseCalibrationWindow)
 
-    def __init__(self):
+    def __init__(self, cameraResolution: tuple[int]):
         # pylint: disable=no-member
         super().__init__()
         # Properties
-        self.previewSize = QtCore.QSize(848, 480)
+        self.previewSize = QtCore.QSize(cameraResolution[0], cameraResolution[1])
         self.margin = 40
         self.currentCalibrationFrames = []
 
