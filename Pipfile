@@ -10,14 +10,15 @@ pyautogui = "*"
 numpy = "*"
 scipy = "*"
 pandas = "*"
-sklearn = "*"
+scikit-learn = "*"
+qimage2ndarray = "*"
 
 [dev-packages]
 pylint = "*"
 black = "~=22.8"
 
 [requires]
-python_version = "3.7"
+python_version = "3.9"
 
 [pipenv]
 allow_prereleases = true

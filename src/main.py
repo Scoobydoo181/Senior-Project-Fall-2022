@@ -142,6 +142,7 @@ class IrisSoftware:
         self.ui.run()
         # Tell all threads to exit
         self.shouldExit = True
+        print("Exiting Iris Software...")
 
 
 if __name__ == "__main__":
