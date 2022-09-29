@@ -20,6 +20,7 @@ class IrisSoftware:
         self.shouldExit = False
         self.isCalibrated = False
         self.settings = {}
+        self.cameraFrameSize = (848, 480)  # 480p
         # TODO: we should put the following inside of a class for detectEyes
         self.blinkDuration = 0
         self.eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
@@ -51,10 +52,18 @@ class IrisSoftware:
     def clickMouse(self, screenX, screenY):
         pass
 
-    @QtCore.Slot()
-    def handleNeedsCalibrationFrame(self):
+    def getCameraFrame(self):
         # Capture the current frame from the camera
         _, frame = self.camera.read()
+        # Resize the frame
+        frame = cv2.resize(frame, self.cameraFrameSize)
+
+        return frame
+
+    @QtCore.Slot()
+    def handleNeedsCalibrationFrame(self):
+        # Get the camera frame
+        frame = self.getCameraFrame()
         # Get eye coordinates
         eyeCoords = detectEyes(
             frame,
@@ -96,8 +105,8 @@ class IrisSoftware:
 
     def processing(self):
         while not self.shouldExit:
-            # Capture the current frame from the camera
-            _, frame = self.camera.read()
+            # Get the camera frame
+            frame = self.getCameraFrame()
             # Get eye coordinates
             eyeCoords = detectEyes(
                 frame,

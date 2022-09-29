@@ -12,13 +12,14 @@ scipy = "*"
 pandas = "*"
 scikit-learn = "*"
 qimage2ndarray = "*"
+pyobjc-framework-quartz = "*"
 
 [dev-packages]
 pylint = "*"
 black = "~=22.8"
 
 [requires]
-python_version = "3.7"
+python_version = "3.9"
 
 [pipenv]
 allow_prereleases = true

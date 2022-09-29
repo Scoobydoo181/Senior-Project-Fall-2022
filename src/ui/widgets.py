@@ -1,4 +1,5 @@
 """A collection of widgets for the UI."""
+import sys
 from typing import Any, List, Tuple
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
@@ -111,7 +112,7 @@ class MainWidget(QMainWindow):
         # pylint: disable=no-member
         super().__init__()
         # Properties
-        self.previewSize = QtCore.QSize(640, 480)
+        self.previewSize = QtCore.QSize(848, 480)
         self.margin = 40
         self.currentCalibrationFrames = []
 
@@ -155,7 +156,7 @@ class CalibrationWidget(QMainWindow):
 
     def getCircleLocations(self):
         # Get the screen geometry
-        screenGeometry = QApplication.primaryScreen().availableGeometry()
+        screenGeometry = QApplication.primaryScreen().geometry()
         # Get the locations
         locs = []
         trueLeft = 0
@@ -163,8 +164,9 @@ class CalibrationWidget(QMainWindow):
         trueMidY = screenGeometry.center().y() - CalibrationCircle.size / 2
         trueRight = screenGeometry.right() - CalibrationCircle.size
         trueTop = 0
-        # TODO: bottom is different on windows
-        trueBottom = screenGeometry.bottom() - CalibrationCircle.size - 35
+        trueBottom = (
+            screenGeometry.bottom() - CalibrationCircle.size - self.bottomOffset
+        )
         # Top
         locs.append((trueLeft, trueTop))
         locs.append((trueMidX, trueTop))
@@ -241,12 +243,20 @@ class CalibrationWidget(QMainWindow):
             QApplication.primaryScreen().availableGeometry().center().toTuple()
         )
         (widgetWidth, widgetHeight) = instructionsWidget.size().toTuple()
-        instructionsWidget.move(centerX - widgetWidth, centerY - widgetHeight - 35)
+        instructionsWidget.move(
+            centerX - widgetWidth, centerY - widgetHeight - self.bottomOffset
+        )
         # Set as the central widget
         self.setCentralWidget(container)
 
     def __init__(self):
         super().__init__()
+
+        # Properties
+        self.bottomOffset = 0
+        # Adjust for mac OS offset
+        if sys.platform == "darwin":
+            self.bottomOffset = 35
 
         # Remove window title
         self.setWindowTitle("Iris Software - Calibration")
