@@ -12,7 +12,6 @@ scipy = "*"
 pandas = "*"
 scikit-learn = "*"
 qimage2ndarray = "*"
-pyobjc-framework-quartz = "*"
 
 [dev-packages]
 pylint = "*"

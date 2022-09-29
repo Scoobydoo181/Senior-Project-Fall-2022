@@ -19,6 +19,8 @@ from numpy import ndarray
 class MainWidget(QMainWindow):
     """Main widget showing the video stream in the corner."""
 
+    TARGET_PREVIEW_HEIGHT = 480
+
     receivedCameraFrame = QtCore.Signal(ndarray)
     receivedCalibrationFrame = QtCore.Signal(tuple)
     receivedCloseCalibrationWindow = QtCore.Signal()
@@ -55,6 +57,7 @@ class MainWidget(QMainWindow):
         """This function references the following snippet: https://gist.github.com/bsdnoobz/8464000"""
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.flip(frame, 1)
+        frame = cv2.resize(frame, (self.previewSize.width(), self.previewSize.height()))
         image = qimage2ndarray.array2qimage(frame)
         self.videoPreview.setPixmap(QtGui.QPixmap.fromImage(image))
 
@@ -108,11 +111,18 @@ class MainWidget(QMainWindow):
         self.receivedCalibrationFrame.connect(self.storeCalibrationFrame)
         self.receivedCloseCalibrationWindow.connect(self.handleCloseCalibrationWindow)
 
+    def calculatePreviewSize(self, cameraResolution: tuple[int]) -> QtCore.QSize:
+        factor = float(cameraResolution[1]) / MainWidget.TARGET_PREVIEW_HEIGHT
+
+        width = cameraResolution[0] * factor
+
+        return QtCore.QSize(width, MainWidget.TARGET_PREVIEW_HEIGHT)
+
     def __init__(self, cameraResolution: tuple[int]):
         # pylint: disable=no-member
         super().__init__()
         # Properties
-        self.previewSize = QtCore.QSize(cameraResolution[0], cameraResolution[1])
+        self.previewSize = self.calculatePreviewSize(cameraResolution)
         self.margin = 40
         self.currentCalibrationFrames = []
 
