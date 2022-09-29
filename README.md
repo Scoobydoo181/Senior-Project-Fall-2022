@@ -12,11 +12,11 @@ The goal of this project is to use machine learning and a webcam to make gaze tr
 
 #### Running the Program
 
-> Note: we have opted to use peotry as our dependency manager for its simplicity and consistency. Poetry creates a virtual environment with all of the dependencies installed in that environment. To get IDE suggestions and autocomplete, you will have to point your editor to the poetry virtual environment created for the project. For more information about pipenv, see their [website](https://python-poetry.org/).
+> Note: we have opted to use peotry as our dependency manager for its simplicity and consistency. Poetry creates a virtual environment with all of the dependencies installed in that environment. To get IDE suggestions and autocomplete, you will have to point your editor to the poetry virtual environment created for the project. For more information about poetry, see their [website](https://python-poetry.org/).
 
 1. Make sure you are on Python `v3.9.13`.
-2. Install our dependency & virtual environment manager poetry by following the instructions on [their website](https://python-poetry.org/docs/#installation).
-3. Make sure you add poetry to your path.
+2. Make sure `pip` is up-to-date by running `pip install --upgrade pip`.
+3. Install our dependency & virtual environment manager poetry by running `pip install poetry`.
 4. To install project dependencies, run `poetry install` in the project's root directory.
 5. To run the project with the installed dependencies, run `poetry run python IrisSoftware/main.py`.
 
