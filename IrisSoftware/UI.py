@@ -1,7 +1,7 @@
 """Handles running the UI elements."""
 import sys
 from PySide6.QtWidgets import QApplication
-from . import widgets
+from IrisSoftware.widgets import MainWidget
 
 CALIBRATION_FILE_NAME = "calibrationData.pickle"
 
@@ -12,7 +12,7 @@ class UI:
     def __init__(self, cameraResolution: tuple[int]) -> None:
         print("Initializing UI...")
         self.app = QApplication([])
-        self.mainWidget = widgets.MainWidget(cameraResolution)
+        self.mainWidget = MainWidget(cameraResolution)
 
     def connectNeedsCalibrationFrameCallback(self, cb):
         self.mainWidget.emittedNeedsCalibrationFrame.connect(cb)
@@ -35,5 +35,5 @@ class UI:
 
 
 if __name__ == "__main__":
-    ui = UI()
+    ui = UI((640, 480))
     sys.exit(ui.run())
