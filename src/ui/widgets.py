@@ -54,6 +54,7 @@ class MainWidget(QMainWindow):
         """This function references the following snippet: https://gist.github.com/bsdnoobz/8464000"""
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.flip(frame, 1)
+        frame = cv2.resize(frame, (self.previewSize.width(), self.previewSize.height()))
         image = qimage2ndarray.array2qimage(frame)
         self.videoPreview.setPixmap(QtGui.QPixmap.fromImage(image))
 
@@ -111,7 +112,7 @@ class MainWidget(QMainWindow):
         # pylint: disable=no-member
         super().__init__()
         # Properties
-        self.previewSize = QtCore.QSize(640, 480)
+        self.previewSize = QtCore.QSize(720, 480)
         self.margin = 40
         self.currentCalibrationFrames = []
 
