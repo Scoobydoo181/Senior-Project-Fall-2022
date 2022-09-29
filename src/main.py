@@ -9,6 +9,7 @@ import pyautogui
 from detectEyes import detectEyes, DetectionType
 from computeScreenCoords import computeScreenCoords
 from ui.UI import UI, CALIBRATION_FILE_NAME
+from Camera import Camera
 
 
 class IrisSoftware:
@@ -20,7 +21,6 @@ class IrisSoftware:
         self.shouldExit = False
         self.isCalibrated = False
         self.settings = {}
-        self.cameraFrameSize = (848, 480)  # 480p
         # TODO: we should put the following inside of a class for detectEyes
         self.blinkDuration = 0
         self.eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
@@ -31,8 +31,8 @@ class IrisSoftware:
         # END TODO
 
         # Classes & objects
-        self.camera = cv2.VideoCapture(0)
-        self.ui = UI()
+        self.camera = Camera()
+        self.ui = UI(self.camera.getResolution())
 
         # Threads
         self.processingThread: threading.Thread
@@ -52,18 +52,10 @@ class IrisSoftware:
     def clickMouse(self, screenX, screenY):
         pass
 
-    def getCameraFrame(self):
-        # Capture the current frame from the camera
-        _, frame = self.camera.read()
-        # Resize the frame
-        frame = cv2.resize(frame, self.cameraFrameSize)
-
-        return frame
-
     @QtCore.Slot()
     def handleNeedsCalibrationFrame(self):
         # Get the camera frame
-        frame = self.getCameraFrame()
+        frame = self.camera.getFrame()
         # Get eye coordinates
         eyeCoords = detectEyes(
             frame,
@@ -106,7 +98,7 @@ class IrisSoftware:
     def processing(self):
         while not self.shouldExit:
             # Get the camera frame
-            frame = self.getCameraFrame()
+            frame = self.camera.getFrame()
             # Get eye coordinates
             eyeCoords = detectEyes(
                 frame,
@@ -150,8 +142,8 @@ class IrisSoftware:
         print("Launching the UI...")
         self.ui.run()
         # Tell all threads to exit
-        self.shouldExit = True
         print("Exiting Iris Software...")
+        self.shouldExit = True
 
 
 if __name__ == "__main__":
