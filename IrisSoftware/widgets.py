@@ -1,4 +1,5 @@
 """A collection of widgets for the UI."""
+import math
 import sys
 from typing import Any, List, Tuple
 from PySide6 import QtCore, QtGui
@@ -112,9 +113,11 @@ class MainWidget(QMainWindow):
         self.receivedCloseCalibrationWindow.connect(self.handleCloseCalibrationWindow)
 
     def calculatePreviewSize(self, cameraResolution: tuple[int]) -> QtCore.QSize:
-        factor = float(cameraResolution[1]) / MainWidget.TARGET_PREVIEW_HEIGHT
+        factor = MainWidget.TARGET_PREVIEW_HEIGHT / float(cameraResolution[1])
 
-        width = cameraResolution[0] * factor
+        width = math.ceil(cameraResolution[0] * factor)
+
+        print(f"Preview resolution: {width}x{MainWidget.TARGET_PREVIEW_HEIGHT}")
 
         return QtCore.QSize(width, MainWidget.TARGET_PREVIEW_HEIGHT)
 
