@@ -6,10 +6,10 @@ from typing import Any
 from PySide6 import QtCore
 import cv2
 import pyautogui
-from IrisSoftware.detectEyes import detectEyes, DetectionType
-from IrisSoftware.computeScreenCoords import computeScreenCoords
-from IrisSoftware.UI import UI, CALIBRATION_FILE_NAME
-from IrisSoftware.Camera import Camera
+from detectEyes import detectEyes, DetectionType
+from computeScreenCoords import computeScreenCoords
+from ui import UI, CALIBRATION_FILE_NAME
+from camera import Camera
 
 
 class IrisSoftware:
