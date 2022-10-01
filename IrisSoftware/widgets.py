@@ -1,7 +1,7 @@
 """A collection of widgets for the UI."""
 import math
 import sys
-from typing import Any, List, Tuple
+from typing import Any
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -276,7 +276,7 @@ class CalibrationWidget(QMainWindow):
 
         # Set up attributes
         self.activeCircleIndex: int = 0
-        self.circles: List[CalibrationCircle] = []
+        self.circles: list[CalibrationCircle] = []
 
         self.setupUI()
 
@@ -301,7 +301,7 @@ class CalibrationCircle(QPushButton):
         else:
             self.setStyleSheet(f"{style}{self.inactiveColor};")
 
-    def __init__(self, parent: QWidget, loc: Tuple[int]):
+    def __init__(self, parent: QWidget, loc: tuple[int]):
         super().__init__("", parent)
 
         # Set size
