@@ -1,7 +1,7 @@
 """Handles running the UI elements."""
 import sys
 from PySide6.QtWidgets import QApplication
-from . import widgets
+from widgets import MainWidget
 
 CALIBRATION_FILE_NAME = "calibrationData.pickle"
 
@@ -9,15 +9,10 @@ CALIBRATION_FILE_NAME = "calibrationData.pickle"
 class UI:
     """Responsible for handling the user interface."""
 
-    def __new__(cls):
-        """Handles singleton."""
-        if not hasattr(cls, "instance"):
-            cls.instance = super(UI, cls).__new__(cls)
-        return cls.instance
-
-    def __init__(self) -> None:
+    def __init__(self, cameraResolution: tuple[int]) -> None:
+        print("Initializing UI...")
         self.app = QApplication([])
-        self.mainWidget = widgets.MainWidget()
+        self.mainWidget = MainWidget(cameraResolution)
 
     def connectNeedsCalibrationFrameCallback(self, cb):
         self.mainWidget.emittedNeedsCalibrationFrame.connect(cb)
@@ -40,5 +35,5 @@ class UI:
 
 
 if __name__ == "__main__":
-    ui = UI()
+    ui = UI((640, 480))
     sys.exit(ui.run())

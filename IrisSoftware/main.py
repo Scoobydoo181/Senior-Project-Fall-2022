@@ -8,7 +8,8 @@ import cv2
 import pyautogui
 from detectEyes import detectEyes, DetectionType
 from computeScreenCoords import computeScreenCoords
-from ui.UI import UI, CALIBRATION_FILE_NAME
+from ui import UI, CALIBRATION_FILE_NAME
+from camera import Camera
 
 
 class IrisSoftware:
@@ -30,8 +31,8 @@ class IrisSoftware:
         # END TODO
 
         # Classes & objects
-        self.camera = cv2.VideoCapture(0)
-        self.ui = UI()
+        self.camera = Camera()
+        self.ui = UI(self.camera.getResolution())
 
         # Threads
         self.processingThread: threading.Thread
@@ -53,8 +54,8 @@ class IrisSoftware:
 
     @QtCore.Slot()
     def handleNeedsCalibrationFrame(self):
-        # Capture the current frame from the camera
-        _, frame = self.camera.read()
+        # Get the camera frame
+        frame = self.camera.getFrame()
         # Get eye coordinates
         eyeCoords = detectEyes(
             frame,
@@ -96,8 +97,8 @@ class IrisSoftware:
 
     def processing(self):
         while not self.shouldExit:
-            # Capture the current frame from the camera
-            _, frame = self.camera.read()
+            # Get the camera frame
+            frame = self.camera.getFrame()
             # Get eye coordinates
             eyeCoords = detectEyes(
                 frame,
@@ -141,6 +142,7 @@ class IrisSoftware:
         print("Launching the UI...")
         self.ui.run()
         # Tell all threads to exit
+        print("Exiting Iris Software...")
         self.shouldExit = True
 
 
