@@ -1,6 +1,7 @@
 """A collection of widgets for the UI."""
+import math
 import sys
-from typing import Any, List, Tuple
+from typing import Any
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -18,6 +19,8 @@ from numpy import ndarray
 
 class MainWidget(QMainWindow):
     """Main widget showing the video stream in the corner."""
+
+    TARGET_PREVIEW_HEIGHT = 480
 
     receivedCameraFrame = QtCore.Signal(ndarray)
     receivedCalibrationFrame = QtCore.Signal(tuple)
@@ -55,6 +58,7 @@ class MainWidget(QMainWindow):
         """This function references the following snippet: https://gist.github.com/bsdnoobz/8464000"""
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.flip(frame, 1)
+        frame = cv2.resize(frame, (self.previewSize.width(), self.previewSize.height()))
         image = qimage2ndarray.array2qimage(frame)
         self.videoPreview.setPixmap(QtGui.QPixmap.fromImage(image))
 
@@ -108,11 +112,20 @@ class MainWidget(QMainWindow):
         self.receivedCalibrationFrame.connect(self.storeCalibrationFrame)
         self.receivedCloseCalibrationWindow.connect(self.handleCloseCalibrationWindow)
 
+    def calculatePreviewSize(self, cameraResolution: tuple[int]) -> QtCore.QSize:
+        factor = MainWidget.TARGET_PREVIEW_HEIGHT / float(cameraResolution[1])
+
+        width = math.ceil(cameraResolution[0] * factor)
+
+        print(f"Preview resolution: {width}x{MainWidget.TARGET_PREVIEW_HEIGHT}")
+
+        return QtCore.QSize(width, MainWidget.TARGET_PREVIEW_HEIGHT)
+
     def __init__(self, cameraResolution: tuple[int]):
         # pylint: disable=no-member
         super().__init__()
         # Properties
-        self.previewSize = QtCore.QSize(cameraResolution[0], cameraResolution[1])
+        self.previewSize = self.calculatePreviewSize(cameraResolution)
         self.margin = 40
         self.currentCalibrationFrames = []
 
@@ -263,7 +276,7 @@ class CalibrationWidget(QMainWindow):
 
         # Set up attributes
         self.activeCircleIndex: int = 0
-        self.circles: List[CalibrationCircle] = []
+        self.circles: list[CalibrationCircle] = []
 
         self.setupUI()
 
@@ -288,7 +301,7 @@ class CalibrationCircle(QPushButton):
         else:
             self.setStyleSheet(f"{style}{self.inactiveColor};")
 
-    def __init__(self, parent: QWidget, loc: Tuple[int]):
+    def __init__(self, parent: QWidget, loc: tuple[int]):
         super().__init__("", parent)
 
         # Set size

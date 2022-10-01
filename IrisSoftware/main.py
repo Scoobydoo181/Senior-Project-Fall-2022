@@ -8,8 +8,8 @@ import cv2
 import pyautogui
 from detectEyes import detectEyes, DetectionType
 from computeScreenCoords import computeScreenCoords
-from ui.UI import UI, CALIBRATION_FILE_NAME
-from Camera import Camera
+from ui import UI, CALIBRATION_FILE_NAME
+from camera import Camera
 
 
 class IrisSoftware:
