@@ -14,6 +14,7 @@ class Camera:
         width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.resolution = (width, height)
+        print("Camera initialized.")
 
     def getResolution(self) -> tuple[int]:
         return self.resolution
