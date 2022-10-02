@@ -55,7 +55,7 @@ class IrisSoftware:
     def clickMouse(self, screenX, screenY):
         pass
 
-    def getFrameWithEyeCoords(self) -> ndarray:
+    def getFrameWithEyeCoords(self) -> list[list[tuple]]:
         # Get the camera frame
         frame = self.camera.getFrame()
         # Get eye coordinates
@@ -70,7 +70,7 @@ class IrisSoftware:
         for (x, y) in eyeCoords:
             cv2.circle(frame, (x, y), 7, (0, 0, 255), 2)
 
-        return frame
+        return eyeCoords
 
     def resetCurrentCalibrationFrames(self):
         self.currentCalibrationFrames = []
