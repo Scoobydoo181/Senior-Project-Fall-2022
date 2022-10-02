@@ -88,9 +88,13 @@ class IrisSoftware:
         if os.path.exists(CALIBRATION_FILE_NAME):
             os.remove(CALIBRATION_FILE_NAME)
 
+        # Add calibration circles' locations to calibration data
+        calibrationCircleLocations = self.ui.calibrationWindow.getCircleLocations()
+        calibrationData = {'eyeCoords': self.currentCalibrationFrames, 'calibrationCircleLocations': calibrationCircleLocations}
+
         # Store calibration data in pickle file
         with open(CALIBRATION_FILE_NAME, "wb") as handle:
-            pickle.dump(self.currentCalibrationFrames, handle)
+            pickle.dump(calibrationData, handle)
 
         print("Saved new calibration data.")
 
