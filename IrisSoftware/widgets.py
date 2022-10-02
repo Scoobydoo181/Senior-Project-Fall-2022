@@ -1,7 +1,6 @@
 """A collection of widgets for the UI."""
 import math
 import sys
-from typing import Any
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -17,41 +16,13 @@ import qimage2ndarray
 from numpy import ndarray
 
 
-class MainWidget(QMainWindow):
+class MainWindow(QMainWindow):
     """Main widget showing the video stream in the corner."""
 
     TARGET_PREVIEW_HEIGHT = 480
 
-    receivedCameraFrame = QtCore.Signal(ndarray)
-    receivedCalibrationFrame = QtCore.Signal(tuple)
-    receivedCloseCalibrationWindow = QtCore.Signal()
-
-    emittedNeedsCalibrationFrame = QtCore.Signal()
-    emittedCalibrationFrames = QtCore.Signal(list)
-
-    @QtCore.Slot()
-    def handleCloseCalibrationWindow(self):
-        self.closeCalibrationWindow()
-
-    @QtCore.Slot()
-    def openCalibrationWindow(self):
-        self.calibrationWindow = CalibrationWidget()
-        self.calibrationWindow.showFullScreen()
-        self.calibrationWindow.completed.connect(self.emitCalibrationData)
-        self.calibrationWindow.cancelled.connect(self.handleCloseCalibrationWindow)
-        self.calibrationWindow.shouldCaptureFrame.connect(
-            self.captureCameraFrameForCalibration
-        )
-        self.showMinimized()
-
-    @QtCore.Slot()
-    def emitCalibrationData(self):
-        self.emittedCalibrationFrames.emit(self.currentCalibrationFrames)
-
-    @QtCore.Slot()
-    def captureCameraFrameForCalibration(self):
-        # Request camera frame
-        self.emittedNeedsCalibrationFrame.emit()
+    cameraFrameSignal = QtCore.Signal(ndarray)
+    openCalibrationSignal = QtCore.Signal()
 
     @QtCore.Slot(ndarray)
     def displayCameraFrame(self, frame):
@@ -61,17 +32,6 @@ class MainWidget(QMainWindow):
         frame = cv2.resize(frame, (self.previewSize.width(), self.previewSize.height()))
         image = qimage2ndarray.array2qimage(frame)
         self.videoPreview.setPixmap(QtGui.QPixmap.fromImage(image))
-
-    @QtCore.Slot(ndarray)
-    def storeCalibrationFrame(self, frame):
-        self.currentCalibrationFrames.append(frame)
-
-    def closeCalibrationWindow(self):
-        self.currentCalibrationFrames = []
-        self.calibrationWindow.close()
-        self.calibrationWindow = None
-        self.showNormal()
-        self.positionInTopRightCorner()
 
     def positionInTopRightCorner(self):
         self.move(
@@ -88,7 +48,7 @@ class MainWidget(QMainWindow):
         # Create calibrate button
         self.calibrateButton = QPushButton("Calibrate")
         # Connect onClick
-        self.calibrateButton.clicked.connect(self.openCalibrationWindow)
+        self.calibrateButton.clicked.connect(self.openCalibrationSignal.emit)
 
         # Create layout container
         layout = QVBoxLayout()
@@ -108,18 +68,16 @@ class MainWidget(QMainWindow):
         self.positionInTopRightCorner()
 
     def setupSlotHandlers(self):
-        self.receivedCameraFrame.connect(self.displayCameraFrame)
-        self.receivedCalibrationFrame.connect(self.storeCalibrationFrame)
-        self.receivedCloseCalibrationWindow.connect(self.handleCloseCalibrationWindow)
+        self.cameraFrameSignal.connect(self.displayCameraFrame)
 
     def calculatePreviewSize(self, cameraResolution: tuple[int]) -> QtCore.QSize:
-        factor = MainWidget.TARGET_PREVIEW_HEIGHT / float(cameraResolution[1])
+        factor = MainWindow.TARGET_PREVIEW_HEIGHT / float(cameraResolution[1])
 
         width = math.ceil(cameraResolution[0] * factor)
 
-        print(f"Preview resolution: {width}x{MainWidget.TARGET_PREVIEW_HEIGHT}")
+        print(f"Preview resolution: {width}x{MainWindow.TARGET_PREVIEW_HEIGHT}")
 
-        return QtCore.QSize(width, MainWidget.TARGET_PREVIEW_HEIGHT)
+        return QtCore.QSize(width, MainWindow.TARGET_PREVIEW_HEIGHT)
 
     def __init__(self, cameraResolution: tuple[int]):
         # pylint: disable=no-member
@@ -130,12 +88,11 @@ class MainWidget(QMainWindow):
         self.currentCalibrationFrames = []
 
         # Initialize UI elements
-        self.calibrationWindow: CalibrationWidget = None
+        self.calibrationWindow: CalibrationWindow = None
         self.videoPreview: QLabel = None
         self.calibrateButton: QPushButton = None
         # Initialize camera elements
-        self.capture: Any = None
-        self.timer: QtCore.QTimer = None
+        self.capture: any = None
 
         # Remove window title
         self.setWindowTitle("Iris Software")
@@ -149,16 +106,16 @@ class MainWidget(QMainWindow):
         self.setupSlotHandlers()
 
 
-class CalibrationWidget(QMainWindow):
+class CalibrationWindow(QMainWindow):
     """Full-screen window with calibration steps."""
 
-    completed = QtCore.Signal()
-    cancelled = QtCore.Signal()
-    shouldCaptureFrame = QtCore.Signal()
+    completeSignal = QtCore.Signal()
+    cancelSignal = QtCore.Signal()
+    captureFrameSignal = QtCore.Signal()
 
     @QtCore.Slot()
     def cancelCalibration(self):
-        self.cancelled.emit()
+        self.cancelSignal.emit()
 
     @QtCore.Slot()
     def beginCalibration(self):
@@ -210,15 +167,19 @@ class CalibrationWidget(QMainWindow):
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         # If calibration has begun and the spacebar was pressed
         if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
+            # Capture calibration frame
+            self.captureFrameSignal.emit()
             # Check if calibration is complete
             if self.activeCircleIndex >= len(self.circles) - 1:
-                self.completed.emit()
-                return super().keyPressEvent(event)
-            # Store and progress calibration
-            self.shouldCaptureFrame.emit()
-            self.circles[self.activeCircleIndex].setParent(None)
-            self.activeCircleIndex += 1
-            self.circles[self.activeCircleIndex].toggleActive()
+                self.completeSignal.emit()
+            # Otherwise, continue through calibration
+            else:
+                self.circles[self.activeCircleIndex].setParent(None)
+                self.activeCircleIndex += 1
+                self.circles[self.activeCircleIndex].toggleActive()
+        elif event.key() == QtCore.Qt.Key_Escape:
+            # Exit on esc press
+            self.cancelSignal.emit()
 
         return super().keyPressEvent(event)
 

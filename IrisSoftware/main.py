@@ -5,6 +5,7 @@ import threading
 from typing import Any
 from PySide6 import QtCore
 import cv2
+from numpy import ndarray
 import pyautogui
 from detectEyes import detectEyes, DetectionType
 from computeScreenCoords import computeScreenCoords
@@ -17,10 +18,11 @@ class IrisSoftware:
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
-        # Properties & config
+        # Properties, config, & state
         self.shouldExit = False
         self.isCalibrated = False
         self.settings = {}
+        self.currentCalibrationFrames: list[ndarray] = []
         # TODO: we should put the following inside of a class for detectEyes
         self.blinkDuration = 0
         self.eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
@@ -33,6 +35,8 @@ class IrisSoftware:
         # Classes & objects
         self.camera = Camera()
         self.ui = UI(self.camera.getResolution())
+        self.ui.onCalibrationComplete = self.saveCalibrationFrames
+        self.ui.onCaptureCalibrationFrame = self.captureCalibrationFrame
 
         # Threads
         self.processingThread: threading.Thread
@@ -52,8 +56,7 @@ class IrisSoftware:
     def clickMouse(self, screenX, screenY):
         pass
 
-    @QtCore.Slot()
-    def handleNeedsCalibrationFrame(self):
+    def getFrameWithEyeCoords(self) -> ndarray:
         # Get the camera frame
         frame = self.camera.getFrame()
         # Get eye coordinates
@@ -68,32 +71,30 @@ class IrisSoftware:
         for (x, y) in eyeCoords:
             cv2.circle(frame, (x, y), 7, (0, 0, 255), 2)
 
-        # Pass the frame to the UI
-        self.ui.emitReceivedCalibrationFrame(frame)
+        return frame
 
-    @QtCore.Slot(list)
-    def handleCalibrationFrames(self, frames):
-        # Convert frames into eye coordinates
-        eyeCoordsMatrix = []
-        for frame in frames:
-            eyeCoords = detectEyes(
-                frame,
-                DetectionType.EYE_CASCADE_BLOB,
-                self.eyeDetector,
-                self.blobDetector,
-            )
-            eyeCoordsMatrix.append(eyeCoords)
+    def captureCalibrationFrame(self):
+        """Captures and stores a calibration frame."""
+        frame = self.getFrameWithEyeCoords()
+        self.currentCalibrationFrames.append(frame)
+        print("Captured calibration frame")
 
+    def saveCalibrationFrames(self):
+        """Saves the current calibration frames and trains the screen coords model."""
         # Remove the old calibration data, if it exists
         if os.path.exists(CALIBRATION_FILE_NAME):
             os.remove(CALIBRATION_FILE_NAME)
 
         # Store calibration data in pickle file
         with open(CALIBRATION_FILE_NAME, "wb") as handle:
-            pickle.dump(eyeCoordsMatrix, handle)
+            pickle.dump(self.currentCalibrationFrames, handle)
 
-        # Close calibration window
-        self.ui.emitCloseCalibrationWidget()
+        print("Saved new calibration data.")
+
+        # Reset current calibration frames
+        self.currentCalibrationFrames = []
+
+        # TODO: train screen coords model
 
     def processing(self):
         while not self.shouldExit:
@@ -112,7 +113,7 @@ class IrisSoftware:
                 cv2.circle(frame, (x, y), 7, (0, 0, 255), 2)
 
             # Pass the frame to the UI
-            self.ui.emitReceivedCameraFrame(frame)
+            self.ui.emitCameraFrame(frame)
 
             # # Check for blinks
             # didBlink = self.detectBlink(eyeCoords, self.blinkDuration)
@@ -134,10 +135,6 @@ class IrisSoftware:
         print("Launching processing thread...")
         self.processingThread = threading.Thread(target=self.processing)
         self.processingThread.start()
-        # Connect IPC event handlers
-        print("Connecting UI callbacks...")
-        self.ui.connectCalibrationFramesCallback(self.handleCalibrationFrames)
-        self.ui.connectNeedsCalibrationFrameCallback(self.handleNeedsCalibrationFrame)
         # Run the UI
         print("Launching the UI...")
         self.ui.run()
