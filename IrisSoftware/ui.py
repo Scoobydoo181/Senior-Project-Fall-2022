@@ -58,7 +58,7 @@ class UI:
     @QtCore.Slot()
     def __handleCalibrationCancel(self):
         # Callback
-        if self.onCalibrationCancel:
+        if hasattr(self, "onCalibrationCancel"):
             self.onCalibrationCancel()
         # Close calibration window
         self.closeCalibrationWindow()
@@ -68,7 +68,7 @@ class UI:
     @QtCore.Slot()
     def __handleCalibrationComplete(self):
         # Callback
-        if self.onCalibrationComplete:
+        if hasattr(self, "onCalibrationComplete"):
             self.onCalibrationComplete()
         # Close calibration window
         self.closeCalibrationWindow()
@@ -78,7 +78,7 @@ class UI:
     @QtCore.Slot()
     def __handleCalibrationCaptureFrame(self):
         # Callback
-        if self.onCaptureCalibrationFrame:
+        if hasattr(self, "onCaptureCalibrationFrame"):
             self.onCaptureCalibrationFrame()
 
     ### ###

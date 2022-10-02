@@ -16,7 +16,57 @@ import qimage2ndarray
 from numpy import ndarray
 
 
-class MainWindow(QMainWindow):
+class DesignTokens:
+    """Namespace for tokens used in styling UI components."""
+
+    ### Colors ###
+    macOSDarkGray = "#282828"
+    macOSDarkerGray = "#1E1E1E"
+    blue700 = "#1D4ED8"
+    zinc700 = "#3F3F46"
+    zinc500 = "#71717A"
+    zinc50 = "#F9FAFB"
+    ### ###
+
+    ### Component Tokens ###
+    # Button
+    buttonBaseBgColor = zinc700
+    buttonPrimaryBgColor = blue700
+    buttonBaseBorderRadius = "5px"
+    buttonBaseBorderColor = zinc500
+    buttonPrimaryBorderColor = blue700
+    buttonBaseBorderWidth = "1px"
+    buttonBaseBorderStyle = "solid"
+    buttonBasePadding = "10px 20px"
+    buttonBaseFont = "medium 13px"
+    # Circle
+    circleBaseBgColor = zinc700
+    circleActiveBgColor = blue700
+    circleBaseSize = 80
+    # Window
+    windowBgColor = macOSDarkGray
+    windowTextColor = zinc50
+    ### ###
+
+
+class Window(QMainWindow):
+    """Styled window."""
+
+    def __setStyle(self):
+        self.setStyleSheet(
+            f"""
+            background-color: {DesignTokens.windowBgColor};
+            color: {DesignTokens.windowTextColor};
+            """
+        )
+
+    def __init__(self):
+        super().__init__()
+
+        self.__setStyle()
+
+
+class MainWindow(Window):
     """Main widget showing the video stream in the corner."""
 
     TARGET_PREVIEW_HEIGHT = 480
@@ -46,7 +96,7 @@ class MainWindow(QMainWindow):
         self.videoPreview = QLabel()
         self.videoPreview.setFixedSize(self.previewSize)
         # Create calibrate button
-        self.calibrateButton = QPushButton("Calibrate")
+        self.calibrateButton = Button("Calibrate")
         # Connect onClick
         self.calibrateButton.clicked.connect(self.openCalibrationSignal.emit)
 
@@ -90,7 +140,7 @@ class MainWindow(QMainWindow):
         # Initialize UI elements
         self.calibrationWindow: CalibrationWindow = None
         self.videoPreview: QLabel = None
-        self.calibrateButton: QPushButton = None
+        self.calibrateButton: Button = None
         # Initialize camera elements
         self.capture: any = None
 
@@ -98,15 +148,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Iris Software")
         # Set window always on top
         self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
-        # Adjust the style
-        self.setStyleSheet("background-color: black; color: white")
 
         # Initialize
         self.setupUI()
         self.setupSlotHandlers()
 
 
-class CalibrationWindow(QMainWindow):
+class CalibrationWindow(Window):
     """Full-screen window with calibration steps."""
 
     completeSignal = QtCore.Signal()
@@ -130,12 +178,12 @@ class CalibrationWindow(QMainWindow):
         # Get the locations
         locs = []
         trueLeft = 0
-        trueMidX = screenGeometry.center().x() - CalibrationCircle.size / 2
-        trueMidY = screenGeometry.center().y() - CalibrationCircle.size / 2
-        trueRight = screenGeometry.right() - CalibrationCircle.size
+        trueMidX = screenGeometry.center().x() - DesignTokens.circleBaseSize / 2
+        trueMidY = screenGeometry.center().y() - DesignTokens.circleBaseSize / 2
+        trueRight = screenGeometry.right() - DesignTokens.circleBaseSize
         trueTop = 0
         trueBottom = (
-            screenGeometry.bottom() - CalibrationCircle.size - self.bottomOffset
+            screenGeometry.bottom() - DesignTokens.circleBaseSize - self.bottomOffset
         )
         # Top
         locs.append((trueLeft, trueTop))
@@ -204,11 +252,11 @@ class CalibrationWindow(QMainWindow):
         buttonsLayout = QHBoxLayout()
         buttons.setLayout(buttonsLayout)
         # Add cancel button to widget
-        cancelButton = QPushButton("Cancel")
+        cancelButton = Button("Cancel")
         cancelButton.clicked.connect(self.cancelCalibration)
         buttonsLayout.addWidget(cancelButton)
         # Add begin button to widget
-        beginButton = QPushButton("Begin Calibration")
+        beginButton = Button("Begin Calibration", variant="primary")
         beginButton.clicked.connect(self.beginCalibration)
         buttonsLayout.addWidget(beginButton)
         # Position the widget
@@ -246,27 +294,63 @@ class CalibrationCircle(QPushButton):
     """Circle with an active state and onClick handler."""
 
     active = False
-    activeColor = "blue"
-    inactiveColor = "black"
-    size = 80
 
     def toggleActive(self):
         self.active = not self.active
         self.setStyle()
 
     def setStyle(self):
-        style = "border-radius: 40px; background-color: "
+        bgColor = (
+            DesignTokens.circleActiveBgColor
+            if self.active
+            else DesignTokens.circleBaseBgColor
+        )
+        borderRadius = f"{DesignTokens.circleBaseSize / 2}px"
 
-        if self.active:
-            self.setStyleSheet(f"{style}{self.activeColor};")
-        else:
-            self.setStyleSheet(f"{style}{self.inactiveColor};")
+        self.setStyleSheet(
+            f"""
+            background-color: {bgColor};
+            border-radius: {borderRadius};
+            """
+        )
 
     def __init__(self, parent: QWidget, loc: tuple[int]):
         super().__init__("", parent)
 
-        # Set size
+        # Set geometry
         (x, y) = loc
-        self.setGeometry(x, y, self.size, self.size)
+        self.setGeometry(x, y, DesignTokens.circleBaseSize, DesignTokens.circleBaseSize)
         # Set style
         self.setStyle()
+
+
+class Button(QPushButton):
+    """Styled button."""
+
+    def __setStyle(self, variant: str):
+        bgColor = (
+            DesignTokens.buttonPrimaryBgColor
+            if variant == "primary"
+            else DesignTokens.buttonBaseBgColor
+        )
+        borderColor = (
+            DesignTokens.buttonPrimaryBorderColor
+            if variant == "primary"
+            else DesignTokens.buttonBaseBorderColor
+        )
+
+        self.setStyleSheet(
+            f"""
+            background-color: {bgColor};
+            border-radius: {DesignTokens.buttonBaseBorderRadius};
+            border-width: {DesignTokens.buttonBaseBorderWidth};
+            border-color: {borderColor};
+            border-style: {DesignTokens.buttonBaseBorderStyle};
+            padding: {DesignTokens.buttonBasePadding};
+            font: {DesignTokens.buttonBaseFont};"""
+        )
+
+    def __init__(self, label: str, variant: str = "base"):
+        super().__init__(label)
+
+        self.__setStyle(variant)
