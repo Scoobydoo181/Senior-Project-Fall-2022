@@ -144,7 +144,6 @@ class IrisSoftware:
         # Tell all threads to exit
         print("Exiting Iris Software...")
         self.shouldExit = True
-        print("Exiting Iris Software...")
 
 
 if __name__ == "__main__":
