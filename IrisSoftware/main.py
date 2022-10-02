@@ -145,7 +145,6 @@ class IrisSoftware:
         print("Exiting Iris Software...")
         self.shouldExit = True
 
-
 if __name__ == "__main__":
     program = IrisSoftware()
     program.run()
