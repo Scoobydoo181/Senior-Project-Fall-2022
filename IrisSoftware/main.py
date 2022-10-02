@@ -2,8 +2,6 @@
 import os
 import pickle
 import threading
-from typing import Any
-from PySide6 import QtCore
 import cv2
 from numpy import ndarray
 import pyautogui
@@ -51,7 +49,7 @@ class IrisSoftware:
                 # TODO
                 pass
 
-    def detectBlink(self, eyeCoords, blinkDuration) -> Any:
+    def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
 
     def clickMouse(self, screenX, screenY):
@@ -76,12 +74,13 @@ class IrisSoftware:
 
     def resetCurrentCalibrationFrames(self):
         self.currentCalibrationFrames = []
+        print("Reset current calibration frames.")
 
     def captureCalibrationFrame(self):
         """Captures and stores a calibration frame."""
         frame = self.getFrameWithEyeCoords()
         self.currentCalibrationFrames.append(frame)
-        print("Captured calibration frame")
+        print("Captured calibration frame.")
 
     def saveCalibrationFrames(self):
         """Saves the current calibration frames and trains the screen coords model."""
