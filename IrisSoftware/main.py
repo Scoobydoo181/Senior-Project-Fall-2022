@@ -78,7 +78,7 @@ class IrisSoftware:
 
     def captureCalibrationFrame(self):
         """Captures and stores a calibration frame."""
-        frame = self.getFrameWithEyeCoords()
+        frame = self.getCurrentEyeCoords()
         self.currentCalibrationFrames.append(frame)
         print("Captured calibration frame.")
 
