@@ -55,7 +55,7 @@ class IrisSoftware:
     def clickMouse(self, screenX, screenY):
         pass
 
-    def getFrameWithEyeCoords(self) -> list[list[tuple]]:
+    def getCurrentEyeCoords(self) -> list[list[tuple]]:
         # Get the camera frame
         frame = self.camera.getFrame()
         # Get eye coordinates
