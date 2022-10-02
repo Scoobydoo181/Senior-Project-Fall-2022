@@ -5,7 +5,15 @@ def centerCoordinates(f):
     '''Decorator function to convert corner coordinates to center coordinates'''
     def inner(*args, **kwargs):
         eyes = f(*args, **kwargs)
-        return [map(round, (x+w/2, y+h/2)) for (x, y, w, h) in sorted(eyes, key=lambda eye: eye[1])[:2]]
+        return [map(round, (x+w/2, y+h/2)) for (x, y, w, h) in eyes]
+    return inner
+
+
+def filterFalsePositives(f):
+    '''Decorator function to filter out false positives'''
+    def inner(*args, **kwargs):
+        eyes = f(*args, **kwargs)
+        return list(sorted(eyes, key=lambda eye: eye[1])[:2])
     return inner
 
 class DetectionType(Enum):
@@ -15,6 +23,7 @@ class DetectionType(Enum):
     FACE_EYE_CASCADE_BLOB = 4
     EIGENFACE = 4
 
+@filterFalsePositives
 def detectEyes(image, detectorType=DetectionType.EYE_CASCADE, eyeDetector=None, blobDetector=None, faceDetector=None):
     '''Returns the coordinates of the eyes in the image using the specified detector'''
     if detectorType == DetectionType.EYE_CASCADE:
