@@ -20,6 +20,7 @@ class UI:
         self.calibrationWindow: CalibrationWindow
         # Create callback properties
         self.onCaptureCalibrationFrame: callable
+        self.onCalibrationCancel: callable
         self.onCalibrationComplete: callable
         # Connect signal handlers
         self.mainWindow.openCalibrationSignal.connect(self.__handleCalibrationOpen)
@@ -56,6 +57,9 @@ class UI:
 
     @QtCore.Slot()
     def __handleCalibrationCancel(self):
+        # Callback
+        if self.onCalibrationCancel:
+            self.onCalibrationCancel()
         # Close calibration window
         self.closeCalibrationWindow()
         # Show main window

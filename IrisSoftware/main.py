@@ -37,6 +37,7 @@ class IrisSoftware:
         self.ui = UI(self.camera.getResolution())
         self.ui.onCalibrationComplete = self.saveCalibrationFrames
         self.ui.onCaptureCalibrationFrame = self.captureCalibrationFrame
+        self.ui.onCalibrationCancel = self.resetCurrentCalibrationFrames
 
         # Threads
         self.processingThread: threading.Thread
@@ -73,6 +74,9 @@ class IrisSoftware:
 
         return frame
 
+    def resetCurrentCalibrationFrames(self):
+        self.currentCalibrationFrames = []
+
     def captureCalibrationFrame(self):
         """Captures and stores a calibration frame."""
         frame = self.getFrameWithEyeCoords()
@@ -92,7 +96,7 @@ class IrisSoftware:
         print("Saved new calibration data.")
 
         # Reset current calibration frames
-        self.currentCalibrationFrames = []
+        self.resetCurrentCalibrationFrames()
 
         # TODO: train screen coords model
 
