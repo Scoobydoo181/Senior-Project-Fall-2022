@@ -38,7 +38,7 @@ class DesignTokens:
     buttonBaseBorderWidth = "1px"
     buttonBaseBorderStyle = "solid"
     buttonBasePadding = "10px 20px"
-    buttonBaseFont = "medium 13px"
+    buttonBaseFontSize = "13px"
     # Circle
     circleBaseBgColor = zinc700
     circleActiveBgColor = blue700
@@ -347,7 +347,7 @@ class Button(QPushButton):
             border-color: {borderColor};
             border-style: {DesignTokens.buttonBaseBorderStyle};
             padding: {DesignTokens.buttonBasePadding};
-            font: {DesignTokens.buttonBaseFont};"""
+            font-size: {DesignTokens.buttonBaseFontSize};"""
         )
 
     def __init__(self, label: str, variant: str = "base"):
