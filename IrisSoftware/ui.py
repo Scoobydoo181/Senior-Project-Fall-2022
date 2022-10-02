@@ -14,11 +14,21 @@ class UI:
         self.app = QApplication([])
         self.mainWidget = MainWidget(cameraResolution)
 
+    def run(self):
+        self.mainWidget.show()
+        return self.app.exec()
+
+    ### Slot connectors ###
+
     def connectNeedsCalibrationFrameCallback(self, cb):
         self.mainWidget.emittedNeedsCalibrationFrame.connect(cb)
 
     def connectCalibrationFramesCallback(self, cb):
         self.mainWidget.emittedCalibrationFrames.connect(cb)
+
+    ### ###
+
+    ### Signal emitters ###
 
     def emitReceivedCameraFrame(self, frame):
         self.mainWidget.receivedCameraFrame.emit(frame)
@@ -29,9 +39,7 @@ class UI:
     def emitCloseCalibrationWidget(self):
         self.mainWidget.receivedCloseCalibrationWindow.emit()
 
-    def run(self):
-        self.mainWidget.show()
-        return self.app.exec()
+    ### ###
 
 
 if __name__ == "__main__":
