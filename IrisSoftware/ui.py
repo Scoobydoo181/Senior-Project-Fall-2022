@@ -2,10 +2,11 @@
 import sys
 from PySide6.QtWidgets import QApplication
 from widgets import MainWindow, CalibrationWindow
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui
 
 
 CALIBRATION_FILE_NAME = "calibrationData.pickle"
+INTER_FONT_PATH = "resources/InterVariableFont.ttf"
 
 
 class UI:
@@ -15,6 +16,8 @@ class UI:
         print("Initializing UI...")
         # Create app
         self.app = QApplication([])
+        # Load Inter font
+        QtGui.QFontDatabase.addApplicationFont(INTER_FONT_PATH)
         # Create windows
         self.mainWindow = MainWindow(cameraResolution)
         self.calibrationWindow: CalibrationWindow
