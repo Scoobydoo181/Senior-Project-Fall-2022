@@ -1,12 +1,13 @@
 """Handles running the UI elements."""
 import sys
+import pathlib
 from PySide6.QtWidgets import QApplication
 from widgets import MainWindow, CalibrationWindow
 from PySide6 import QtCore, QtGui
 
 
 CALIBRATION_FILE_NAME = "calibrationData.pickle"
-INTER_FONT_PATH = "resources/InterVariableFont.ttf"
+INTER_FONT_PATH = str(pathlib.Path("./resources/InterVariableFont.ttf").resolve())
 
 
 class UI:
