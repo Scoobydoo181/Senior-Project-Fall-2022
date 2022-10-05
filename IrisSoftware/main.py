@@ -21,7 +21,7 @@ class IrisSoftware:
         self.shouldExit = False
         self.isCalibrated = False
         self.settings = {}
-        self.currentCalibrationFrames: list[ndarray] = []
+        self.currentCalibrationFrames: list[list[tuple]] = []
         # TODO: we should put the following inside of a class for detectEyes
         self.blinkDuration = 0
         self.eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
