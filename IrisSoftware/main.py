@@ -46,7 +46,7 @@ class IrisSoftware:
         if os.path.exists(CALIBRATION_FILE_NAME):
             self.isCalibrated = True
             with open(CALIBRATION_FILE_NAME, "rb") as handle:
-                # TODO
+                # TODO: train screen coords interpolator
                 pass
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
@@ -90,7 +90,10 @@ class IrisSoftware:
 
         # Add calibration circles' locations to calibration data
         calibrationCircleLocations = self.ui.calibrationWindow.getCircleLocations()
-        calibrationData = {'eyeCoords': self.currentCalibrationFrames, 'calibrationCircleLocations': calibrationCircleLocations}
+        calibrationData = {
+            "eyeCoords": self.currentCalibrationFrames,
+            "calibrationCircleLocations": calibrationCircleLocations,
+        }
 
         # Store calibration data in pickle file
         with open(CALIBRATION_FILE_NAME, "wb") as handle:
@@ -138,6 +141,10 @@ class IrisSoftware:
 
     def run(self) -> None:
         print("Starting Iris Software...")
+        # Handle initial calibration
+        if not self.isCalibrated:
+            print("Calibrating program...")
+            self.ui.runInitialCalibration()
         # Spawn the processing thread
         print("Launching processing thread...")
         self.processingThread = threading.Thread(target=self.processing)
