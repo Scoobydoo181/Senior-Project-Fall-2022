@@ -15,33 +15,45 @@ from camera import Camera
 class IrisSoftware:
     """Main class responsible for running the program."""
 
+    class State:
+        """Wrapper for program state."""
+
+        def __init__(self) -> None:
+            self.shouldExit = False
+            self.isCalibrated = False
+            self.calibrationEyeCoords: list[list[tuple]] = []
+
+    class Config:
+        """Wrapper for program config/settings.
+
+        Placeholder for now until we simplify with enums.
+        """
+
+        def __init__(self) -> None:
+            self.detectionType: DetectionType = DetectionType.EYE_CASCADE_BLOB
+
+            self.detectorParams = cv2.SimpleBlobDetector_Params()
+            self.detectorParams.filterByArea = True
+            self.detectorParams.maxArea = 1500
+
+            self.blinkDuration = 0
+
+            self.eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
+            self.blobDetector = cv2.SimpleBlobDetector_create(self.detectorParams)
+
     def __init__(self) -> None:
         print("Initializing Iris Software...")
-        # Properties, config, & state
-        self.shouldExit = False
-        self.isCalibrated = False
-        self.settings = {}
-        self.currentCalibrationFrames: list[list[tuple]] = []
-        # TODO: we should put the following inside of a class for detectEyes
-        self.blinkDuration = 0
-        self.eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
-        self.detectorParams = cv2.SimpleBlobDetector_Params()
-        self.detectorParams.filterByArea = True
-        self.detectorParams.maxArea = 1500
-        self.blobDetector = cv2.SimpleBlobDetector_create(self.detectorParams)
-        # END TODO
+        self.state = IrisSoftware.State()
+        self.config = IrisSoftware.Config()
 
-        # Classes & objects
         self.camera = Camera()
+
         self.ui = UI(self.camera.getResolution())
-        self.ui.onCalibrationComplete = self.saveCalibrationFrames
-        self.ui.onCaptureCalibrationFrame = self.captureCalibrationFrame
-        self.ui.onCalibrationCancel = self.resetCurrentCalibrationFrames
+        self.ui.onCalibrationComplete = self.saveCalibrationData
+        self.ui.onCaptureCalibrationEyeCoords = self.captureCalibrationEyeCoords
+        self.ui.onCalibrationCancel = self.resetCalibrationEyeCoords
 
-        # Threads
         self.processingThread: threading.Thread
-
-        # Load any saved data
 
         # Load calibration data
         if os.path.exists(CALIBRATION_FILE_NAME):
@@ -56,35 +68,24 @@ class IrisSoftware:
     def clickMouse(self, screenX, screenY):
         pass
 
-    def getCurrentEyeCoords(self) -> list[list[tuple]]:
-        # Get the camera frame
+    def resetCalibrationEyeCoords(self):
+        self.state.calibrationEyeCoords = []
+        print("Reset current calibration eye coords.")
+
+    def captureCalibrationEyeCoords(self):
+        """Captures and stores a eye coords for calibration."""
         frame = self.camera.getFrame()
-        # Get eye coordinates
         eyeCoords = detectEyes(
             frame,
-            DetectionType.EYE_CASCADE_BLOB,
-            self.eyeDetector,
-            self.blobDetector,
+            self.config.detectionType,
+            self.config.eyeDetector,
+            self.config.blobDetector,
         )
+        self.state.calibrationEyeCoords.append(eyeCoords)
+        print("Captured calibration eye coords.")
 
-        # Draw circles around the eyes
-        for (x, y) in eyeCoords:
-            cv2.circle(frame, (x, y), 7, (0, 0, 255), 2)
-
-        return eyeCoords
-
-    def resetCurrentCalibrationFrames(self):
-        self.currentCalibrationFrames = []
-        print("Reset current calibration frames.")
-
-    def captureCalibrationFrame(self):
-        """Captures and stores a calibration frame."""
-        frame = self.getCurrentEyeCoords()
-        self.currentCalibrationFrames.append(frame)
-        print("Captured calibration frame.")
-
-    def saveCalibrationFrames(self):
-        """Saves the current calibration frames and trains the screen coords model."""
+    def saveCalibrationData(self):
+        """Saves the current calibration data and trains the screen coords model."""
         # Remove the old calibration data, if it exists
         if os.path.exists(CALIBRATION_FILE_NAME):
             os.remove(CALIBRATION_FILE_NAME)
@@ -92,7 +93,7 @@ class IrisSoftware:
         # Add calibration circles' locations to calibration data
         calibrationCircleLocations = self.ui.calibrationWindow.getCircleLocations()
         calibrationData = {
-            "eyeCoords": self.currentCalibrationFrames,
+            "eyeCoords": self.state.calibrationEyeCoords,
             "calibrationCircleLocations": calibrationCircleLocations,
         }
 
@@ -103,20 +104,20 @@ class IrisSoftware:
         print("Saved new calibration data.")
 
         # Reset current calibration frames
-        self.resetCurrentCalibrationFrames()
+        self.resetCalibrationEyeCoords()
 
         # TODO: train screen coords model
 
     def processing(self):
-        while not self.shouldExit:
+        while not self.state.shouldExit:
             # Get the camera frame
             frame = self.camera.getFrame()
             # Get eye coordinates
             eyeCoords = detectEyes(
                 frame,
-                DetectionType.EYE_CASCADE_BLOB,
-                self.eyeDetector,
-                self.blobDetector,
+                self.config.detectionType,
+                self.config.eyeDetector,
+                self.config.blobDetector,
             )
 
             # Draw circles around the eyes
@@ -157,7 +158,7 @@ class IrisSoftware:
         self.ui.run()
         # Tell all threads to exit
         print("Exiting Iris Software...")
-        self.shouldExit = True
+        self.state.shouldExit = True
 
 
 if __name__ == "__main__":

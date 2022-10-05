@@ -23,7 +23,7 @@ class UI:
         self.mainWindow = MainWindow(cameraResolution)
         self.calibrationWindow: CalibrationWindow
         # Create callback properties
-        self.onCaptureCalibrationFrame: callable
+        self.onCaptureCalibrationEyeCoords: callable
         self.onCalibrationCancel: callable
         self.onCalibrationComplete: callable
         # Connect signal handlers
@@ -65,8 +65,8 @@ class UI:
             )
             self.calibrationWindow.cancelSignal.connect(self.__handleCalibrationCancel)
 
-        self.calibrationWindow.captureFrameSignal.connect(
-            self.__handleCalibrationCaptureFrame
+        self.calibrationWindow.captureEyeCoordsSignal.connect(
+            self.__handleCalibrationCaptureEyeCoords
         )
         # Show the window
         self.calibrationWindow.showFullScreen()
@@ -113,10 +113,10 @@ class UI:
         self.mainWindow.showNormal()
 
     @QtCore.Slot()
-    def __handleCalibrationCaptureFrame(self):
+    def __handleCalibrationCaptureEyeCoords(self):
         # Callback
-        if hasattr(self, "onCaptureCalibrationFrame"):
-            self.onCaptureCalibrationFrame()
+        if hasattr(self, "onCaptureCalibrationEyeCoords"):
+            self.onCaptureCalibrationEyeCoords()
 
     ### ###
 
