@@ -1,6 +1,7 @@
 """Main file holding code responsible for running the program."""
 import os
 import pickle
+import sys
 import threading
 import cv2
 from numpy import ndarray
@@ -144,7 +145,9 @@ class IrisSoftware:
         # Handle initial calibration
         if not self.isCalibrated:
             print("Calibrating program...")
-            self.ui.runInitialCalibration()
+            result = self.ui.runInitialCalibration()
+            if result == -1:
+                sys.exit()
         # Spawn the processing thread
         print("Launching processing thread...")
         self.processingThread = threading.Thread(target=self.processing)

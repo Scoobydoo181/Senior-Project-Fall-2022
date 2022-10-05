@@ -51,15 +51,20 @@ class UI:
         # Create window
         self.calibrationWindow = CalibrationWindow()
         # Connect signal handlers
-        self.calibrationWindow.cancelSignal.connect(self.__handleCalibrationCancel)
         if initial:
             self.calibrationWindow.completeSignal.connect(
                 self.__handleCalibrationCompleteInitial
             )
+            self.calibrationWindow.cancelSignal.connect(
+                self.__handleCalibrationCancelInitial
+            )
+
         else:
             self.calibrationWindow.completeSignal.connect(
                 self.__handleCalibrationComplete
             )
+            self.calibrationWindow.cancelSignal.connect(self.__handleCalibrationCancel)
+
         self.calibrationWindow.captureFrameSignal.connect(
             self.__handleCalibrationCaptureFrame
         )
@@ -73,6 +78,11 @@ class UI:
         self.__openCalibration()
         # Minimize the main window
         self.mainWindow.showMinimized()
+
+    @QtCore.Slot()
+    def __handleCalibrationCancelInitial(self):
+        self.closeCalibrationWindow()
+        self.app.exit(-1)
 
     @QtCore.Slot()
     def __handleCalibrationCancel(self):
