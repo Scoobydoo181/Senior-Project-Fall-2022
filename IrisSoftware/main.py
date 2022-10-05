@@ -55,7 +55,7 @@ class IrisSoftware:
     def clickMouse(self, screenX, screenY):
         pass
 
-    def getFrameWithEyeCoords(self) -> ndarray:
+    def getCurrentEyeCoords(self) -> list[list[tuple]]:
         # Get the camera frame
         frame = self.camera.getFrame()
         # Get eye coordinates
@@ -70,7 +70,7 @@ class IrisSoftware:
         for (x, y) in eyeCoords:
             cv2.circle(frame, (x, y), 7, (0, 0, 255), 2)
 
-        return frame
+        return eyeCoords
 
     def resetCurrentCalibrationFrames(self):
         self.currentCalibrationFrames = []
@@ -78,7 +78,7 @@ class IrisSoftware:
 
     def captureCalibrationFrame(self):
         """Captures and stores a calibration frame."""
-        frame = self.getFrameWithEyeCoords()
+        frame = self.getCurrentEyeCoords()
         self.currentCalibrationFrames.append(frame)
         print("Captured calibration frame.")
 
@@ -88,9 +88,13 @@ class IrisSoftware:
         if os.path.exists(CALIBRATION_FILE_NAME):
             os.remove(CALIBRATION_FILE_NAME)
 
+        # Add calibration circles' locations to calibration data
+        calibrationCircleLocations = self.ui.calibrationWindow.getCircleLocations()
+        calibrationData = {'eyeCoords': self.currentCalibrationFrames, 'calibrationCircleLocations': calibrationCircleLocations}
+
         # Store calibration data in pickle file
         with open(CALIBRATION_FILE_NAME, "wb") as handle:
-            pickle.dump(self.currentCalibrationFrames, handle)
+            pickle.dump(calibrationData, handle)
 
         print("Saved new calibration data.")
 
