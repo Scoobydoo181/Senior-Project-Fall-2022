@@ -1,11 +1,13 @@
 """Handles running the UI elements."""
 import sys
+import pathlib
 from PySide6.QtWidgets import QApplication
 from widgets import MainWindow, CalibrationWindow
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui
 
 
 CALIBRATION_FILE_NAME = "calibrationData.pickle"
+INTER_FONT_PATH = str(pathlib.Path("./resources/InterVariableFont.ttf").resolve())
 
 
 class UI:
@@ -15,6 +17,8 @@ class UI:
         print("Initializing UI...")
         # Create app
         self.app = QApplication([])
+        # Load Inter font
+        QtGui.QFontDatabase.addApplicationFont(INTER_FONT_PATH)
         # Create windows
         self.mainWindow = MainWindow(cameraResolution)
         self.calibrationWindow: CalibrationWindow
@@ -58,7 +62,7 @@ class UI:
     @QtCore.Slot()
     def __handleCalibrationCancel(self):
         # Callback
-        if self.onCalibrationCancel:
+        if hasattr(self, "onCalibrationCancel"):
             self.onCalibrationCancel()
         # Close calibration window
         self.closeCalibrationWindow()
@@ -68,7 +72,7 @@ class UI:
     @QtCore.Slot()
     def __handleCalibrationComplete(self):
         # Callback
-        if self.onCalibrationComplete:
+        if hasattr(self, "onCalibrationComplete"):
             self.onCalibrationComplete()
         # Close calibration window
         self.closeCalibrationWindow()
@@ -78,7 +82,7 @@ class UI:
     @QtCore.Slot()
     def __handleCalibrationCaptureFrame(self):
         # Callback
-        if self.onCaptureCalibrationFrame:
+        if hasattr(self, "onCaptureCalibrationFrame"):
             self.onCaptureCalibrationFrame()
 
     ### ###
