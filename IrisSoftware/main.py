@@ -1,6 +1,7 @@
 """Main file holding code responsible for running the program."""
 import os
 import pickle
+import sys
 import threading
 import cv2
 from numpy import ndarray
@@ -20,7 +21,7 @@ class IrisSoftware:
         self.shouldExit = False
         self.isCalibrated = False
         self.settings = {}
-        self.currentCalibrationFrames: list[ndarray] = []
+        self.currentCalibrationFrames: list[list[tuple]] = []
         # TODO: we should put the following inside of a class for detectEyes
         self.blinkDuration = 0
         self.eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
@@ -46,7 +47,7 @@ class IrisSoftware:
         if os.path.exists(CALIBRATION_FILE_NAME):
             self.isCalibrated = True
             with open(CALIBRATION_FILE_NAME, "rb") as handle:
-                # TODO
+                # TODO: train screen coords interpolator
                 pass
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
@@ -90,7 +91,10 @@ class IrisSoftware:
 
         # Add calibration circles' locations to calibration data
         calibrationCircleLocations = self.ui.calibrationWindow.getCircleLocations()
-        calibrationData = {'eyeCoords': self.currentCalibrationFrames, 'calibrationCircleLocations': calibrationCircleLocations}
+        calibrationData = {
+            "eyeCoords": self.currentCalibrationFrames,
+            "calibrationCircleLocations": calibrationCircleLocations,
+        }
 
         # Store calibration data in pickle file
         with open(CALIBRATION_FILE_NAME, "wb") as handle:
@@ -138,6 +142,12 @@ class IrisSoftware:
 
     def run(self) -> None:
         print("Starting Iris Software...")
+        # Handle initial calibration
+        if not self.isCalibrated:
+            print("Calibrating program...")
+            result = self.ui.runInitialCalibration()
+            if result == -1:
+                sys.exit()
         # Spawn the processing thread
         print("Launching processing thread...")
         self.processingThread = threading.Thread(target=self.processing)

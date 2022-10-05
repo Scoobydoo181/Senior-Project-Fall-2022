@@ -30,6 +30,11 @@ class UI:
         self.mainWindow.openCalibrationSignal.connect(self.__handleCalibrationOpen)
         print("UI initialized.")
 
+    def runInitialCalibration(self):
+        self.__openCalibration(initial=True)
+        print("Initial calibration running.")
+        return self.app.exec()
+
     def run(self):
         self.mainWindow.show()
         print("UI running.")
@@ -42,22 +47,42 @@ class UI:
     def emitCameraFrame(self, frame):
         self.mainWindow.cameraFrameSignal.emit(frame)
 
-    ### Signal handlers ###
-
-    @QtCore.Slot()
-    def __handleCalibrationOpen(self):
+    def __openCalibration(self, initial=False):
         # Create window
         self.calibrationWindow = CalibrationWindow()
         # Connect signal handlers
-        self.calibrationWindow.cancelSignal.connect(self.__handleCalibrationCancel)
-        self.calibrationWindow.completeSignal.connect(self.__handleCalibrationComplete)
+        if initial:
+            self.calibrationWindow.completeSignal.connect(
+                self.__handleCalibrationCompleteInitial
+            )
+            self.calibrationWindow.cancelSignal.connect(
+                self.__handleCalibrationCancelInitial
+            )
+
+        else:
+            self.calibrationWindow.completeSignal.connect(
+                self.__handleCalibrationComplete
+            )
+            self.calibrationWindow.cancelSignal.connect(self.__handleCalibrationCancel)
+
         self.calibrationWindow.captureFrameSignal.connect(
             self.__handleCalibrationCaptureFrame
         )
         # Show the window
         self.calibrationWindow.showFullScreen()
+
+    ### Signal handlers ###
+
+    @QtCore.Slot()
+    def __handleCalibrationOpen(self):
+        self.__openCalibration()
         # Minimize the main window
         self.mainWindow.showMinimized()
+
+    @QtCore.Slot()
+    def __handleCalibrationCancelInitial(self):
+        self.closeCalibrationWindow()
+        self.app.exit(-1)
 
     @QtCore.Slot()
     def __handleCalibrationCancel(self):
@@ -68,6 +93,14 @@ class UI:
         self.closeCalibrationWindow()
         # Show main window
         self.mainWindow.showNormal()
+
+    @QtCore.Slot()
+    def __handleCalibrationCompleteInitial(self):
+        # Callback
+        if hasattr(self, "onCalibrationComplete"):
+            self.onCalibrationComplete()
+        self.closeCalibrationWindow()
+        self.app.exit()
 
     @QtCore.Slot()
     def __handleCalibrationComplete(self):
