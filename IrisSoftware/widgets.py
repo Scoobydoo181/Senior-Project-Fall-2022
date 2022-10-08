@@ -168,7 +168,7 @@ class CalibrationWindow(Window):
 
     completeSignal = QtCore.Signal()
     cancelSignal = QtCore.Signal()
-    captureFrameSignal = QtCore.Signal()
+    captureEyeCoordsSignal = QtCore.Signal()
 
     @QtCore.Slot()
     def __cancelCalibration(self):
@@ -212,8 +212,8 @@ class CalibrationWindow(Window):
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         # If calibration has begun and the spacebar was pressed
         if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
-            # Capture calibration frame
-            self.captureFrameSignal.emit()
+            # Capture calibration eye coords
+            self.captureEyeCoordsSignal.emit()
             # Check if calibration is complete
             if self.activeCircleIndex >= len(self.circles) - 1:
                 self.completeSignal.emit()
