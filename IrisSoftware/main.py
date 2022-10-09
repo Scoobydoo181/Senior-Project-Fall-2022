@@ -7,7 +7,7 @@ import cv2
 from numpy import ndarray
 import pyautogui
 from detectEyes import detectEyes, DetectionType
-from computeScreenCoords import computeScreenCoords
+from computeScreenCoords import Interpolator
 from ui import UI, CALIBRATION_FILE_NAME
 from camera import Camera
 
@@ -55,12 +55,13 @@ class IrisSoftware:
 
         self.processingThread: threading.Thread
 
+        self.interpolator = Interpolator()
+        self.isCalibrated = False
+
         # Load calibration data
         if os.path.exists(CALIBRATION_FILE_NAME):
             self.isCalibrated = True
-            with open(CALIBRATION_FILE_NAME, "rb") as handle:
-                # TODO: train screen coords interpolator
-                pass
+            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME)
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
@@ -131,14 +132,14 @@ class IrisSoftware:
             # didBlink = self.detectBlink(eyeCoords, self.blinkDuration)
 
             # # Determine screen coordinates from eye coordinates
-            # screenX, screenY = computeScreenCoords(eyeCoords)
+            screenX, screenY = self.interpolator.computeScreenCoords([eyeCoords])
 
             # # Click the mouse if the user has blinked
             # if didBlink:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            # pyautogui.moveTo(screenX, screenY)
+            pyautogui.moveTo(screenX, screenY)
         # TODO: handle any teardown steps
 
     def run(self) -> None:
@@ -149,6 +150,8 @@ class IrisSoftware:
             result = self.ui.runInitialCalibration()
             if result == -1:
                 sys.exit()
+            self.interpolator.calibrateInterpolator()
+            self.isCalibrated = True
         # Spawn the processing thread
         print("Launching processing thread...")
         self.processingThread = threading.Thread(target=self.processing)
