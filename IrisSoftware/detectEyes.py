@@ -201,7 +201,7 @@ def testBlobDetection2():
 
 
 if __name__ == "__main__":
-    # testMain()
+    testMain()
     # testBlobDetection()
-    testBlobDetection2()
+    # testBlobDetection2()
     # takePicture()
