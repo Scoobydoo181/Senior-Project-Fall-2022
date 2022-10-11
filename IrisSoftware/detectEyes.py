@@ -1,5 +1,6 @@
 import cv2
 from enum import Enum
+import numpy as np
 
 
 def centerCoordinates(f):
@@ -85,6 +86,7 @@ def eyeCascadeBlobDetector(image, eyeDetector, blobDetector, demo=False):
     pupils = [blobDetector.detect(eye) for eye in eyes_bw]
     if demo:
         for i, (eye, pupil) in enumerate(zip(eyes_bw, pupils)):
+            cv2.imwrite(f"pupil{i}.jpg", eye)
             detected = cv2.drawKeypoints(
                 eye, pupil, eye, (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
             cv2.imshow(f"Blob {i} detected", detected)
@@ -144,8 +146,7 @@ def testMain():
     eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
 
     detectorParams = cv2.SimpleBlobDetector_Params()
-    detectorParams.filterByArea = True
-    detectorParams.maxArea = 1500
+
     blobDetector = cv2.SimpleBlobDetector_create(detectorParams)
 
     while(True):
@@ -153,6 +154,10 @@ def testMain():
 
         eyes = detectEyes(image, DetectionType.FACE_EYE_CASCADE_BLOB,
                           eyeDetector, blobDetector, faceDetector)
+
+        # if len(eyes) == 0:
+        #     print("No eyes detected")
+
         for (x, y) in eyes:
             cv2.circle(image, (x, y), 7, (0, 0, 255), 2)
         cv2.imshow("Eyes", image)
@@ -168,8 +173,6 @@ def testBlobDetection(demo=True):
     eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
 
     detectorParams = cv2.SimpleBlobDetector_Params()
-    detectorParams.filterByArea = True
-    detectorParams.maxArea = 1500
     blobDetector = cv2.SimpleBlobDetector_create(detectorParams)
 
     eyeCascadeBlobDetector(image, eyeDetector, blobDetector, demo)
@@ -182,8 +185,23 @@ def takePicture():
     cv2.imwrite("sampleFace.jpg", img)
     camera.release()
 
+def testBlobDetection2():
+    image = cv2.imread("pupil0.jpg")
+
+    detectorParams = cv2.SimpleBlobDetector_Params()
+    blobDetector = cv2.SimpleBlobDetector_create(detectorParams)
+
+    pupil = blobDetector.detect(image)
+    print(pupil[0].pt)
+
+    detected = cv2.drawKeypoints(image, pupil, np.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    detected = cv2.circle(detected, tupleAdd(pupil[0].pt, 0, 0), 7, (0, 0, 255), 2)
+    cv2.imshow("Blob detected", detected)
+    cv2.waitKey()
+
 
 if __name__ == "__main__":
-    testMain()
+    # testMain()
     # testBlobDetection()
+    testBlobDetection2()
     # takePicture()

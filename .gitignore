@@ -6,3 +6,5 @@ __pycache__
 .vscode
 # Ignore pickle files
 *.pickle
+# Ignore test images
+*.jpg

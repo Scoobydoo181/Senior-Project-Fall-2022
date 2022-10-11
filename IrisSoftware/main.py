@@ -33,8 +33,6 @@ class IrisSoftware:
             self.detectionType: DetectionType = DetectionType.EYE_CASCADE_BLOB
 
             self.detectorParams = cv2.SimpleBlobDetector_Params()
-            self.detectorParams.filterByArea = True
-            self.detectorParams.maxArea = 1500
 
             self.blinkDuration = 0
 
