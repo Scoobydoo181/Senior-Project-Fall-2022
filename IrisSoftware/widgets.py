@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QApplication,
     QHBoxLayout,
-    QSizePolicy,
 )
 import cv2
 import qimage2ndarray
@@ -89,6 +88,7 @@ class MainWindow(Window):
 
     cameraFrameSignal = QtCore.Signal(ndarray)
     openCalibrationSignal = QtCore.Signal()
+    openMenuSignal = QtCore.Signal()
 
     @QtCore.Slot(ndarray)
     def __displayCameraFrame(self, frame):
@@ -130,12 +130,15 @@ class MainWindow(Window):
         self.videoPreview = QLabel()
         self.videoPreview.setFixedSize(self.previewSize)
         layout.addWidget(self.videoPreview)
-        # Create calibrate button
+        # Create buttons
         buttonContainer = QWidget()
         buttonContainerLayout = QHBoxLayout(buttonContainer)
         self.calibrateButton = Button("Calibrate")
         self.calibrateButton.clicked.connect(self.openCalibrationSignal.emit)
         buttonContainerLayout.addWidget(self.calibrateButton)
+        self.menuButton = Button("Menu")
+        self.menuButton.clicked.connect(self.openMenuSignal.emit)
+        buttonContainerLayout.addWidget(self.menuButton)
         layout.addWidget(buttonContainer, alignment=QtCore.Qt.AlignCenter)
 
         # Set the main window
@@ -152,6 +155,7 @@ class MainWindow(Window):
         # Initialize UI elements
         self.videoPreview: QLabel = None
         self.calibrateButton: Button = None
+        self.menuButton: Button = None
 
         # Remove window title
         self.setWindowTitle("Iris Software")
@@ -363,3 +367,28 @@ class Button(QPushButton):
         super().__init__(text=label, parent=parent)
 
         self.__setStyle(variant)
+
+
+class MenuWindow(Window):
+    """Menu for settings of the program."""
+
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Iris Software - Menu")
+
+        self.__setupUI()
+
+    def __setupUI(self):
+        centralWidget = QWidget()
+        layout = QVBoxLayout(centralWidget)
+
+        modelPrioritizationLabel = QLabel("Model Prioritization")
+        blinkSensitivityLabel = QLabel("Blink Sensitivity")
+        calibrationLabel = QLabel("Calibration")
+
+        layout.addWidget(modelPrioritizationLabel)
+        layout.addWidget(blinkSensitivityLabel)
+        layout.addWidget(calibrationLabel)
+
+        self.setCentralWidget(centralWidget)
