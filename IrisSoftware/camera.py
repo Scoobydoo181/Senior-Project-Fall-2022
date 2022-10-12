@@ -24,3 +24,7 @@ class Camera:
         _, frame = self.capture.read()
 
         return frame
+
+    def release(self) -> None:
+        self.capture.release()
+        print("Camera released.")

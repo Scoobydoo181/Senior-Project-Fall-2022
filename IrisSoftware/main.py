@@ -22,6 +22,7 @@ class IrisSoftware:
             self.shouldExit = False
             self.isCalibrated = False
             self.calibrationEyeCoords: list[list[tuple]] = []
+            self.lastCursorPos = None
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
@@ -48,8 +49,18 @@ class IrisSoftware:
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
 
-    def clickMouse(self, screenX, screenY):
-        pass
+    def moveMouse(self, screenX, screenY):
+        '''Move the mouse to the given screen coordinates, moving smoothly over multiple frames'''
+        if self.lastCursorPos == None:
+            pyautogui.moveTo(screenX, screenY)
+            self.lastCursorPos = (screenX, screenY)
+        else:
+            # Smooth out the mouse movement to minimize jitter
+            x = self.lastCursorPos[0] + (screenX - self.lastCursorPos[0]) * 0.1
+            y = self.lastCursorPos[1] + (screenY - self.lastCursorPos[1]) * 0.1
+
+            pyautogui.moveTo(x, y)
+            self.lastCursorPos = (x, y)
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
@@ -91,6 +102,7 @@ class IrisSoftware:
         while not self.state.shouldExit:
             # Get the camera frame
             frame = self.camera.getFrame()
+
             # Get eye coordinates
             eyeCoords = self.eyeDetector.detectEyes(frame)
 
@@ -112,8 +124,10 @@ class IrisSoftware:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            # pyautogui.moveTo(screenX, screenY)
-        # TODO: handle any teardown steps
+            # self.moveMouse(screenX, screenY)
+            
+        # Release the camera before exiting
+        self.camera.release()
 
     def run(self) -> None:
         '''Launch threads and start program'''
