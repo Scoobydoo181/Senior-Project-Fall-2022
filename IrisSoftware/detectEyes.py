@@ -26,8 +26,25 @@ def tupleAdd(tup, a, b):
     return tup
 
 def getPupils(pupils, eyes):
-    '''If a pupil is not detected, use the center of the eye instead'''
-    return [tupleAdd(pupil[0].pt, x, y) if len(pupil) > 0 else tupleAdd((x, y), w/2, h/2) for pupil, (x, y, w, h) in zip(pupils, eyes)]
+    '''Join together lists of detected blobs and eye detection boxes.
+     Uses the blob detection coordinates if available, otherwise uses the center of the cropped eye box instead'''
+
+    def pickBestCoordinates(pupil, eyeBox):
+        (x, y, w, h) = eyeBox
+        if len(pupil) > 0:
+            return tupleAdd(pupil[0].pt, x, y) 
+        else: 
+            return tupleAdd((x, y), w/2, h/2)
+
+    return [pickBestCoordinates(pupil, eyeBox) for pupil, eyeBox in zip(pupils, eyes)]
+
+def preprocessEyeImage(image):
+    '''Preprocess a cropped black and white eye image to make it easier to detect the pupil'''
+    erodedImage = cv2.erode(image, None, iterations=2)
+    dialatedImage = cv2.dilate(erodedImage, None, iterations=4)
+    blurredImage = cv2.medianBlur(dialatedImage, 5)
+
+    return blurredImage
 
 class EyeDetection:
     '''Class to manage eye detection'''
@@ -148,8 +165,7 @@ class EyeDetection:
         eyes_bw = [cv2.threshold(eye, 45, 255, cv2.THRESH_BINARY)[1]
                 for eye in croppedEyes]
 
-        eyes_bw = [cv2.medianBlur(cv2.dilate(cv2.erode(
-            eye, None, iterations=2), None, iterations=4), 5) for eye in eyes_bw]
+        eyes_bw = [preprocessEyeImage(eye) for eye in eyes_bw]
 
         pupils = [self.blobDetector.detect(eye) for eye in eyes_bw]
 
