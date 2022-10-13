@@ -6,7 +6,7 @@ import threading
 import cv2
 from numpy import ndarray
 import pyautogui
-from detectEyes import detectEyes, DetectionType
+from detectEyes import EyeDetection
 from computeScreenCoords import computeScreenCoords
 from ui import UI, CALIBRATION_FILE_NAME
 from camera import Camera
@@ -22,29 +22,13 @@ class IrisSoftware:
             self.shouldExit = False
             self.isCalibrated = False
             self.calibrationEyeCoords: list[list[tuple]] = []
-
-    class Config:
-        """Wrapper for program config/settings.
-
-        Placeholder for now until we simplify with enums.
-        """
-
-        def __init__(self) -> None:
-            self.detectionType: DetectionType = DetectionType.EYE_CASCADE_BLOB
-
-            self.detectorParams = cv2.SimpleBlobDetector_Params()
-            self.detectorParams.filterByArea = True
-            self.detectorParams.maxArea = 1500
-
-            self.blinkDuration = 0
-
-            self.eyeDetector = cv2.CascadeClassifier("resources/haarcascade_eye.xml")
-            self.blobDetector = cv2.SimpleBlobDetector_create(self.detectorParams)
+            self.lastCursorPos = None
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
         self.state = IrisSoftware.State()
-        self.config = IrisSoftware.Config()
+
+        self.eyeDetector = EyeDetection()
 
         self.camera = Camera()
 
@@ -65,8 +49,18 @@ class IrisSoftware:
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
 
-    def clickMouse(self, screenX, screenY):
-        pass
+    def moveMouse(self, screenX, screenY):
+        '''Move the mouse to the given screen coordinates, moving smoothly over multiple frames'''
+        if self.lastCursorPos == None:
+            pyautogui.moveTo(screenX, screenY)
+            self.lastCursorPos = (screenX, screenY)
+        else:
+            # Smooth out the mouse movement to minimize jitter
+            x = self.lastCursorPos[0] + (screenX - self.lastCursorPos[0]) * 0.1
+            y = self.lastCursorPos[1] + (screenY - self.lastCursorPos[1]) * 0.1
+
+            pyautogui.moveTo(x, y)
+            self.lastCursorPos = (x, y)
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
@@ -75,12 +69,7 @@ class IrisSoftware:
     def captureCalibrationEyeCoords(self):
         """Captures and stores a eye coords for calibration."""
         frame = self.camera.getFrame()
-        eyeCoords = detectEyes(
-            frame,
-            self.config.detectionType,
-            self.config.eyeDetector,
-            self.config.blobDetector,
-        )
+        eyeCoords = self.eyeDetector.detectEyes(frame)
         self.state.calibrationEyeCoords.append(eyeCoords)
         print("Captured calibration eye coords.")
 
@@ -109,16 +98,13 @@ class IrisSoftware:
         # TODO: train screen coords model
 
     def processing(self):
+        '''Thread to run main loop of eye detection'''
         while not self.state.shouldExit:
             # Get the camera frame
             frame = self.camera.getFrame()
+
             # Get eye coordinates
-            eyeCoords = detectEyes(
-                frame,
-                self.config.detectionType,
-                self.config.eyeDetector,
-                self.config.blobDetector,
-            )
+            eyeCoords = self.eyeDetector.detectEyes(frame)
 
             # Draw circles around the eyes
             for (x, y) in eyeCoords:
@@ -138,10 +124,13 @@ class IrisSoftware:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            # pyautogui.moveTo(screenX, screenY)
-        # TODO: handle any teardown steps
+            # self.moveMouse(screenX, screenY)
+            
+        # Release the camera before exiting
+        self.camera.release()
 
     def run(self) -> None:
+        '''Launch threads and start program'''
         print("Starting Iris Software...")
         # Handle initial calibration
         if not self.isCalibrated:
