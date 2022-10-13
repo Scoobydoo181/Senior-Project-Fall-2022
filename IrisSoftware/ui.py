@@ -2,7 +2,7 @@
 import sys
 import pathlib
 from PySide6.QtWidgets import QApplication
-from widgets import MainWindow, CalibrationWindow
+from widgets import MainWindow, CalibrationWindow, MenuWindow
 from PySide6 import QtCore, QtGui
 
 
@@ -22,12 +22,14 @@ class UI:
         # Create windows
         self.mainWindow = MainWindow(cameraResolution)
         self.calibrationWindow: CalibrationWindow
+        self.menuWindow: MenuWindow
         # Create callback properties
         self.onCaptureCalibrationEyeCoords: callable
         self.onCalibrationCancel: callable
         self.onCalibrationComplete: callable
         # Connect signal handlers
         self.mainWindow.openCalibrationSignal.connect(self.__handleCalibrationOpen)
+        self.mainWindow.openMenuSignal.connect(self.__handleMenuOpen)
         print("UI initialized.")
 
     def runInitialCalibration(self):
@@ -43,6 +45,10 @@ class UI:
     def closeCalibrationWindow(self):
         self.calibrationWindow.close()
         self.calibrationWindow = None
+
+    def closeMenuWindow(self):
+        self.menuWindow.close()
+        self.menuWindow = None
 
     def emitCameraFrame(self, frame):
         self.mainWindow.cameraFrameSignal.emit(frame)
@@ -72,6 +78,11 @@ class UI:
         self.calibrationWindow.showFullScreen()
 
     ### Signal handlers ###
+
+    @QtCore.Slot()
+    def __handleMenuOpen(self):
+        self.menuWindow = MenuWindow()
+        self.menuWindow.show()
 
     @QtCore.Slot()
     def __handleCalibrationOpen(self):
