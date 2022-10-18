@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QApplication,
     QHBoxLayout,
+    QSizePolicy,
 )
 from enum import Enum
 import cv2
@@ -413,6 +414,8 @@ class SelectionGroup(QWidget):
             self.buttons.append(button)
             layout.addWidget(button)
 
+        layout.addStretch()
+
 
 class PupilModelOptions(Enum):
     """Helper enum for pupil models."""
@@ -433,7 +436,7 @@ class MenuWindow(Window):
 
         self.setWindowTitle("Iris Software - Menu")
 
-        self.calibrationButton: Button
+        self.calibrationButtonContainer: QWidget
 
         self.pupilModelMapping = {
             PupilModelOptions.ACCURACY: "Accuracy",
@@ -475,22 +478,37 @@ class MenuWindow(Window):
 
         self.pupilModelSelectionGroup = SelectionGroup(pupilModelSelectionOptions)
 
+    def __setupCalibrationButton(self):
+        self.calibrationButtonContainer = QWidget()
+        layout = QHBoxLayout(self.calibrationButtonContainer)
+
+        calibrationButton = Button("Calibrate")
+        calibrationButton.clicked.connect(self.openCalibrationSignal.emit)
+
+        layout.addWidget(calibrationButton)
+        layout.addStretch()
+
     def __setupUI(self):
         centralWidget = QWidget()
-        layout = QVBoxLayout(centralWidget)
+        centerLayout = QHBoxLayout(centralWidget)
+        centerLayout.addStretch()
+        layout = QVBoxLayout()
+        centerLayout.addLayout(layout)
+        centerLayout.addStretch()
 
         modelPrioritizationLabel = QLabel("Model Prioritization")
         blinkSensitivityLabel = QLabel("Blink Sensitivity")
         calibrationLabel = QLabel("Calibration")
-        self.calibrationButton = Button("Calibrate")
-        self.calibrationButton.clicked.connect(self.openCalibrationSignal.emit)
 
+        self.__setupCalibrationButton()
         self.__setupPupilModelSelectionGroup()
 
+        layout.addStretch()
         layout.addWidget(modelPrioritizationLabel)
         layout.addWidget(self.pupilModelSelectionGroup)
         layout.addWidget(blinkSensitivityLabel)
         layout.addWidget(calibrationLabel)
-        layout.addWidget(self.calibrationButton)
+        layout.addWidget(self.calibrationButtonContainer)
+        layout.addStretch()
 
         self.setCentralWidget(centralWidget)
