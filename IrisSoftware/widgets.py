@@ -1,6 +1,7 @@
 """A collection of widgets for the UI."""
 import math
 import sys
+from enum import Enum
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -10,9 +11,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QApplication,
     QHBoxLayout,
-    QSizePolicy,
 )
-from enum import Enum
 import cv2
 import qimage2ndarray
 from numpy import ndarray
@@ -86,7 +85,7 @@ class Window(QMainWindow):
 class MainWindow(Window):
     """Main widget showing the video stream in the corner."""
 
-    TARGET_PREVIEW_HEIGHT = 480
+    TARGET_PREVIEW_HEIGHT = 240
 
     cameraFrameSignal = QtCore.Signal(ndarray)
     openMenuSignal = QtCore.Signal()
