@@ -63,6 +63,14 @@ class IrisSoftware:
             pyautogui.moveTo(x, y)
             self.state.lastCursorPos = (x, y)
 
+    def safeComputeCoords(self, eyeCoords):
+        # return last cursor position if available when eyes aren't properly detected, if not return center screen 
+        if len(eyeCoords) < 2:
+            res = list(self.camera.getResolution())
+            return self.state.lastCursorPos if self.state.lastCursorPos is not None else tuple([resolution //2 for resolution in res])
+        
+        return self.interpolator.computeScreenCoords(eyeCoords)
+
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
         print("Reset current calibration eye coords.")
@@ -118,7 +126,8 @@ class IrisSoftware:
             # didBlink = self.detectBlink(eyeCoords, self.blinkDuration)
 
             # # Determine screen coordinates from eye coordinates
-            screenX, screenY = self.interpolator.computeScreenCoords(eyeCoords)
+            screenX, screenY = self.safeComputeCoords(eyeCoords)
+            print('moving to: ', screenX, screenY)
 
             # # Click the mouse if the user has blinked
             # if didBlink:
