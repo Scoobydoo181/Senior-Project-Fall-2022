@@ -7,7 +7,7 @@ import cv2
 from numpy import ndarray
 import pyautogui
 from detectEyes import EyeDetection
-from computeScreenCoords import computeScreenCoords
+from computeScreenCoords import Interpolator
 from ui import UI, CALIBRATION_FILE_NAME
 from camera import Camera
 
@@ -39,28 +39,38 @@ class IrisSoftware:
 
         self.processingThread: threading.Thread
 
+        self.interpolator = Interpolator()
+
         # Load calibration data
         if os.path.exists(CALIBRATION_FILE_NAME):
-            self.isCalibrated = True
-            with open(CALIBRATION_FILE_NAME, "rb") as handle:
-                # TODO: train screen coords interpolator
-                pass
+            self.state.isCalibrated = True
+            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME)
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
 
     def moveMouse(self, screenX, screenY):
         '''Move the mouse to the given screen coordinates, moving smoothly over multiple frames'''
-        if self.lastCursorPos == None:
+        if self.state.lastCursorPos is None:
             pyautogui.moveTo(screenX, screenY)
-            self.lastCursorPos = (screenX, screenY)
+            self.state.lastCursorPos = (screenX, screenY)
         else:
             # Smooth out the mouse movement to minimize jitter
-            x = self.lastCursorPos[0] + (screenX - self.lastCursorPos[0]) * 0.1
-            y = self.lastCursorPos[1] + (screenY - self.lastCursorPos[1]) * 0.1
+            x = self.state.lastCursorPos[0] + (screenX - self.state.lastCursorPos[0]) * 0.1
+            y = self.state.lastCursorPos[1] + (screenY - self.state.lastCursorPos[1]) * 0.1
 
             pyautogui.moveTo(x, y)
-            self.lastCursorPos = (x, y)
+            self.state.lastCursorPos = (x, y)
+
+    def safeComputeCoords(self, eyeCoords):
+        # return last cursor position if available when eyes aren't properly detected, if not return center screen 
+        if len(eyeCoords) < 2:
+            if self.state.lastCursorPos is not None:
+                return self.state.lastCursorPos
+            res = list(self.camera.getResolution())
+            return tuple([resolution //2 for resolution in res])
+        
+        return self.interpolator.computeScreenCoords(eyeCoords)
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
@@ -70,6 +80,8 @@ class IrisSoftware:
         """Captures and stores a eye coords for calibration."""
         frame = self.camera.getFrame()
         eyeCoords = self.eyeDetector.detectEyes(frame)
+        if len(eyeCoords) < 2:
+            eyeCoords = [(None, None), (None,None)]
         self.state.calibrationEyeCoords.append(eyeCoords)
         print("Captured calibration eye coords.")
 
@@ -117,14 +129,14 @@ class IrisSoftware:
             # didBlink = self.detectBlink(eyeCoords, self.blinkDuration)
 
             # # Determine screen coordinates from eye coordinates
-            # screenX, screenY = computeScreenCoords(eyeCoords)
+            screenX, screenY = self.safeComputeCoords(eyeCoords)
 
             # # Click the mouse if the user has blinked
             # if didBlink:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            # self.moveMouse(screenX, screenY)
+            self.moveMouse(screenX, screenY)
             
         # Release the camera before exiting
         self.camera.release()
@@ -133,11 +145,13 @@ class IrisSoftware:
         '''Launch threads and start program'''
         print("Starting Iris Software...")
         # Handle initial calibration
-        if not self.isCalibrated:
+        if not self.state.isCalibrated:
             print("Calibrating program...")
             result = self.ui.runInitialCalibration()
             if result == -1:
                 sys.exit()
+            self.interpolator.calibrateInterpolator()
+            self.state.isCalibrated = True
         # Spawn the processing thread
         print("Launching processing thread...")
         self.processingThread = threading.Thread(target=self.processing)
