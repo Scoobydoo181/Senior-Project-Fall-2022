@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
 )
+from enum import Enum
 import cv2
 import qimage2ndarray
 from numpy import ndarray
@@ -335,15 +336,19 @@ class CalibrationCircle(QPushButton):
 class Button(QPushButton):
     """Styled button."""
 
-    def __setStyle(self, variant: str):
+    def changeVariant(self, variant: str):
+        self.variant = variant
+        self.__setStyle()
+
+    def __setStyle(self):
         bgColor = (
             DesignTokens.buttonPrimaryBgColor
-            if variant == "primary"
+            if self.variant == "primary"
             else DesignTokens.buttonBaseBgColor
         )
         borderColor = (
             DesignTokens.buttonPrimaryBorderColor
-            if variant == "primary"
+            if self.variant == "primary"
             else DesignTokens.buttonBaseBorderColor
         )
 
@@ -362,20 +367,113 @@ class Button(QPushButton):
     def __init__(self, label: str, parent: QWidget = None, variant: str = "base"):
         super().__init__(text=label, parent=parent)
 
-        self.__setStyle(variant)
+        self.variant = variant
+
+        self.__setStyle()
+
+
+class SelectionGroup(QWidget):
+    """Group of buttons for selecting an option."""
+
+    class SelectionOption:
+        """Helper type for SelectionGroup."""
+
+        def __init__(self, label: str, callback: callable) -> None:
+            self.label = label
+            self.callback = callback
+
+    def __init__(self, options: list[SelectionOption], default: int = 0):
+        super().__init__()
+
+        self.default = default
+        self.options = options
+        self.buttons: list[Button] = []
+        self.mapping: dict[str, int] = {}
+
+        self.__setupUI()
+
+    def updateSelection(self, label: str):
+        target = self.mapping[label]
+
+        for i, v in enumerate(self.buttons):
+            if i == target:
+                v.changeVariant("primary")
+            else:
+                v.changeVariant("base")
+
+    def __setupUI(self):
+        layout = QHBoxLayout(self)
+
+        for i, opt in enumerate(self.options):
+            button = Button(opt.label)
+            if i == self.default:
+                button.changeVariant("primary")
+            button.clicked.connect(opt.callback)
+            self.mapping[opt.label] = i
+            self.buttons.append(button)
+            layout.addWidget(button)
+
+
+class PupilModelOptions(Enum):
+    """Helper enum for pupil models."""
+
+    ACCURACY = 1
+    BALANCED = 2
+    SPEED = 3
 
 
 class MenuWindow(Window):
     """Menu for settings of the program."""
 
     openCalibrationSignal = QtCore.Signal()
+    changePupilModelSignal = QtCore.Signal(PupilModelOptions)
 
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Iris Software - Menu")
 
+        self.calibrationButton: Button
+
+        self.pupilModelMapping = {
+            PupilModelOptions.ACCURACY: "Accuracy",
+            PupilModelOptions.BALANCED: "Balanced",
+            PupilModelOptions.SPEED: "Speed",
+        }
+        self.pupilModelSelectionGroup: SelectionGroup
+
         self.__setupUI()
+
+    def __modelChangeCallback(self, value: PupilModelOptions):
+        self.changePupilModelSignal.emit(value)
+        self.pupilModelSelectionGroup.updateSelection(self.pupilModelMapping[value])
+
+    def __modelChangeAccuracyCallback(self):
+        self.__modelChangeCallback(PupilModelOptions.ACCURACY)
+
+    def __modelChangeBalancedCallback(self):
+        self.__modelChangeCallback(PupilModelOptions.BALANCED)
+
+    def __modelChangeSpeedCallback(self):
+        self.__modelChangeCallback(PupilModelOptions.SPEED)
+
+    def __setupPupilModelSelectionGroup(self):
+        pupilModelSelectionOptions = [
+            SelectionGroup.SelectionOption(
+                self.pupilModelMapping[PupilModelOptions.ACCURACY],
+                self.__modelChangeAccuracyCallback,
+            ),
+            SelectionGroup.SelectionOption(
+                self.pupilModelMapping[PupilModelOptions.BALANCED],
+                self.__modelChangeBalancedCallback,
+            ),
+            SelectionGroup.SelectionOption(
+                self.pupilModelMapping[PupilModelOptions.SPEED],
+                self.__modelChangeSpeedCallback,
+            ),
+        ]
+
+        self.pupilModelSelectionGroup = SelectionGroup(pupilModelSelectionOptions)
 
     def __setupUI(self):
         centralWidget = QWidget()
@@ -387,7 +485,10 @@ class MenuWindow(Window):
         self.calibrationButton = Button("Calibrate")
         self.calibrationButton.clicked.connect(self.openCalibrationSignal.emit)
 
+        self.__setupPupilModelSelectionGroup()
+
         layout.addWidget(modelPrioritizationLabel)
+        layout.addWidget(self.pupilModelSelectionGroup)
         layout.addWidget(blinkSensitivityLabel)
         layout.addWidget(calibrationLabel)
         layout.addWidget(self.calibrationButton)

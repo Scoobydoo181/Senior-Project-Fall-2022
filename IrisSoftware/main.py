@@ -8,7 +8,7 @@ from numpy import ndarray
 import pyautogui
 from detectEyes import EyeDetection
 from computeScreenCoords import Interpolator
-from ui import UI, CALIBRATION_FILE_NAME
+from ui import UI, CALIBRATION_FILE_NAME, PupilModelOptions
 from camera import Camera
 
 
@@ -36,6 +36,7 @@ class IrisSoftware:
         self.ui.onCalibrationComplete = self.saveCalibrationData
         self.ui.onCaptureCalibrationEyeCoords = self.captureCalibrationEyeCoords
         self.ui.onCalibrationCancel = self.resetCalibrationEyeCoords
+        self.ui.onChangePupilModel = self.changePupilModel
 
         self.processingThread: threading.Thread
 
@@ -50,27 +51,43 @@ class IrisSoftware:
         pass
 
     def moveMouse(self, screenX, screenY):
-        '''Move the mouse to the given screen coordinates, moving smoothly over multiple frames'''
+        """Move the mouse to the given screen coordinates, moving smoothly over multiple frames"""
         if self.state.lastCursorPos is None:
             pyautogui.moveTo(screenX, screenY)
             self.state.lastCursorPos = (screenX, screenY)
         else:
             # Smooth out the mouse movement to minimize jitter
-            x = self.state.lastCursorPos[0] + (screenX - self.state.lastCursorPos[0]) * 0.1
-            y = self.state.lastCursorPos[1] + (screenY - self.state.lastCursorPos[1]) * 0.1
+            x = (
+                self.state.lastCursorPos[0]
+                + (screenX - self.state.lastCursorPos[0]) * 0.1
+            )
+            y = (
+                self.state.lastCursorPos[1]
+                + (screenY - self.state.lastCursorPos[1]) * 0.1
+            )
 
             pyautogui.moveTo(x, y)
             self.state.lastCursorPos = (x, y)
 
     def safeComputeCoords(self, eyeCoords):
-        # return last cursor position if available when eyes aren't properly detected, if not return center screen 
+        # return last cursor position if available when eyes aren't properly detected, if not return center screen
         if len(eyeCoords) < 2:
             if self.state.lastCursorPos is not None:
                 return self.state.lastCursorPos
             res = list(self.camera.getResolution())
-            return tuple([resolution //2 for resolution in res])
-        
+            return tuple([resolution // 2 for resolution in res])
+
         return self.interpolator.computeScreenCoords(eyeCoords)
+
+    def changePupilModel(self, value: PupilModelOptions):
+        if value == PupilModelOptions.ACCURACY:
+            self.eyeDetector.detectionType = (
+                EyeDetection.DetectionType.FACE_EYE_CASCADE_BLOB
+            )
+        elif value == PupilModelOptions.BALANCED:
+            self.eyeDetector.detectionType = EyeDetection.DetectionType.EYE_CASCADE_BLOB
+        elif value == PupilModelOptions.SPEED:
+            self.eyeDetector.detectionType = EyeDetection.DetectionType.EYE_CASCADE
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
@@ -81,7 +98,7 @@ class IrisSoftware:
         frame = self.camera.getFrame()
         eyeCoords = self.eyeDetector.detectEyes(frame)
         if len(eyeCoords) < 2:
-            eyeCoords = [(None, None), (None,None)]
+            eyeCoords = [(None, None), (None, None)]
         self.state.calibrationEyeCoords.append(eyeCoords)
         print("Captured calibration eye coords.")
 
@@ -110,7 +127,7 @@ class IrisSoftware:
         # TODO: train screen coords model
 
     def processing(self):
-        '''Thread to run main loop of eye detection'''
+        """Thread to run main loop of eye detection"""
         while not self.state.shouldExit:
             # Get the camera frame
             frame = self.camera.getFrame()
@@ -137,12 +154,12 @@ class IrisSoftware:
 
             # # Move the mouse based on the eye coordinates
             self.moveMouse(screenX, screenY)
-            
+
         # Release the camera before exiting
         self.camera.release()
 
     def run(self) -> None:
-        '''Launch threads and start program'''
+        """Launch threads and start program"""
         print("Starting Iris Software...")
         # Handle initial calibration
         if not self.state.isCalibrated:
