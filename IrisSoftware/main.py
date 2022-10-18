@@ -66,8 +66,10 @@ class IrisSoftware:
     def safeComputeCoords(self, eyeCoords):
         # return last cursor position if available when eyes aren't properly detected, if not return center screen 
         if len(eyeCoords) < 2:
+            if self.state.lastCursorPos is not None:
+                return self.state.lastCursorPos
             res = list(self.camera.getResolution())
-            return self.state.lastCursorPos if self.state.lastCursorPos is not None else tuple([resolution //2 for resolution in res])
+            return tuple([resolution //2 for resolution in res])
         
         return self.interpolator.computeScreenCoords(eyeCoords)
 
