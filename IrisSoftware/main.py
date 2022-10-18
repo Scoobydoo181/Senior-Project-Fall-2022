@@ -40,11 +40,10 @@ class IrisSoftware:
         self.processingThread: threading.Thread
 
         self.interpolator = Interpolator()
-        self.isCalibrated = False
 
         # Load calibration data
         if os.path.exists(CALIBRATION_FILE_NAME):
-            self.isCalibrated = True
+            self.state.isCalibrated = True
             self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME)
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
@@ -52,7 +51,7 @@ class IrisSoftware:
 
     def moveMouse(self, screenX, screenY):
         '''Move the mouse to the given screen coordinates, moving smoothly over multiple frames'''
-        if self.state.lastCursorPos == None:
+        if self.state.lastCursorPos is None:
             pyautogui.moveTo(screenX, screenY)
             self.state.lastCursorPos = (screenX, screenY)
         else:
@@ -147,13 +146,13 @@ class IrisSoftware:
         '''Launch threads and start program'''
         print("Starting Iris Software...")
         # Handle initial calibration
-        if not self.isCalibrated:
+        if not self.state.isCalibrated:
             print("Calibrating program...")
             result = self.ui.runInitialCalibration()
             if result == -1:
                 sys.exit()
             self.interpolator.calibrateInterpolator()
-            self.isCalibrated = True
+            self.state.isCalibrated = True
         # Spawn the processing thread
         print("Launching processing thread...")
         self.processingThread = threading.Thread(target=self.processing)
