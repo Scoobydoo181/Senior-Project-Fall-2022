@@ -79,6 +79,8 @@ class IrisSoftware:
         """Captures and stores a eye coords for calibration."""
         frame = self.camera.getFrame()
         eyeCoords = self.eyeDetector.detectEyes(frame)
+        if len(eyeCoords) < 2:
+            eyeCoords = [(None, None), (None,None)]
         self.state.calibrationEyeCoords.append(eyeCoords)
         print("Captured calibration eye coords.")
 

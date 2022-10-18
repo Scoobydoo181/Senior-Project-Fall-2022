@@ -25,6 +25,7 @@ def toCalibrationDataframes(eyeCoords: list[list[tuple]], screenCoords: list[tup
     df1 =pd.DataFrame(unpackedEyes)
     df2 =pd.DataFrame(screenCoords)
     df3 = pd.concat([df1,df2])
+    df3.dropna(inplace=True)
     X = df3.iloc[:, 0:4]
     Y = df3.iloc[:, -2:]
     return X,Y
