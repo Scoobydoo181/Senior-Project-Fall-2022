@@ -87,7 +87,6 @@ class MainWindow(Window):
     TARGET_PREVIEW_HEIGHT = 480
 
     cameraFrameSignal = QtCore.Signal(ndarray)
-    openCalibrationSignal = QtCore.Signal()
     openMenuSignal = QtCore.Signal()
 
     @QtCore.Slot(ndarray)
@@ -133,9 +132,6 @@ class MainWindow(Window):
         # Create buttons
         buttonContainer = QWidget()
         buttonContainerLayout = QHBoxLayout(buttonContainer)
-        self.calibrateButton = Button("Calibrate")
-        self.calibrateButton.clicked.connect(self.openCalibrationSignal.emit)
-        buttonContainerLayout.addWidget(self.calibrateButton)
         self.menuButton = Button("Menu")
         self.menuButton.clicked.connect(self.openMenuSignal.emit)
         buttonContainerLayout.addWidget(self.menuButton)
@@ -146,7 +142,7 @@ class MainWindow(Window):
         # Set the position and size of the main window
         self.positionInTopRightCorner()
 
-    def __init__(self, cameraResolution: tuple[int]):
+    def __init__(self, cameraResolution: tuple[int, int]):
         super().__init__()
         # Properties
         self.previewSize = self.__calculatePreviewSize(cameraResolution)
@@ -372,6 +368,8 @@ class Button(QPushButton):
 class MenuWindow(Window):
     """Menu for settings of the program."""
 
+    openCalibrationSignal = QtCore.Signal()
+
     def __init__(self):
         super().__init__()
 
@@ -386,9 +384,12 @@ class MenuWindow(Window):
         modelPrioritizationLabel = QLabel("Model Prioritization")
         blinkSensitivityLabel = QLabel("Blink Sensitivity")
         calibrationLabel = QLabel("Calibration")
+        self.calibrationButton = Button("Calibrate")
+        self.calibrationButton.clicked.connect(self.openCalibrationSignal.emit)
 
         layout.addWidget(modelPrioritizationLabel)
         layout.addWidget(blinkSensitivityLabel)
         layout.addWidget(calibrationLabel)
+        layout.addWidget(self.calibrationButton)
 
         self.setCentralWidget(centralWidget)

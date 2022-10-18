@@ -13,7 +13,7 @@ INTER_FONT_PATH = str(pathlib.Path("./resources/InterVariableFont.ttf").resolve(
 class UI:
     """Responsible for handling the user interface."""
 
-    def __init__(self, cameraResolution: tuple[int]) -> None:
+    def __init__(self, cameraResolution: tuple[int, int]) -> None:
         print("Initializing UI...")
         # Create app
         self.app = QApplication([])
@@ -28,7 +28,6 @@ class UI:
         self.onCalibrationCancel: callable
         self.onCalibrationComplete: callable
         # Connect signal handlers
-        self.mainWindow.openCalibrationSignal.connect(self.__handleCalibrationOpen)
         self.mainWindow.openMenuSignal.connect(self.__handleMenuOpen)
         print("UI initialized.")
 
@@ -82,13 +81,14 @@ class UI:
     @QtCore.Slot()
     def __handleMenuOpen(self):
         self.menuWindow = MenuWindow()
+        self.menuWindow.openCalibrationSignal.connect(self.__handleCalibrationOpen)
         self.menuWindow.show()
 
     @QtCore.Slot()
     def __handleCalibrationOpen(self):
-        self.__openCalibration()
-        # Minimize the main window
         self.mainWindow.showMinimized()
+        self.menuWindow.showMinimized()
+        self.__openCalibration()
 
     @QtCore.Slot()
     def __handleCalibrationCancelInitial(self):
@@ -100,10 +100,9 @@ class UI:
         # Callback
         if hasattr(self, "onCalibrationCancel"):
             self.onCalibrationCancel()
-        # Close calibration window
         self.closeCalibrationWindow()
-        # Show main window
         self.mainWindow.showNormal()
+        self.menuWindow.showNormal()
 
     @QtCore.Slot()
     def __handleCalibrationCompleteInitial(self):
@@ -118,10 +117,9 @@ class UI:
         # Callback
         if hasattr(self, "onCalibrationComplete"):
             self.onCalibrationComplete()
-        # Close calibration window
         self.closeCalibrationWindow()
-        # Show main window
         self.mainWindow.showNormal()
+        self.menuWindow.showNormal()
 
     @QtCore.Slot()
     def __handleCalibrationCaptureEyeCoords(self):

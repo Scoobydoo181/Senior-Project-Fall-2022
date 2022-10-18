@@ -16,7 +16,7 @@ class Camera:
         self.resolution = (width, height)
         print("Camera initialized.")
 
-    def getResolution(self) -> tuple[int]:
+    def getResolution(self) -> tuple[int, int]:
         return self.resolution
 
     def getFrame(self) -> ndarray:
