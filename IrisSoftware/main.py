@@ -52,16 +52,16 @@ class IrisSoftware:
 
     def moveMouse(self, screenX, screenY):
         '''Move the mouse to the given screen coordinates, moving smoothly over multiple frames'''
-        if self.lastCursorPos == None:
+        if self.state.lastCursorPos == None:
             pyautogui.moveTo(screenX, screenY)
-            self.lastCursorPos = (screenX, screenY)
+            self.state.lastCursorPos = (screenX, screenY)
         else:
             # Smooth out the mouse movement to minimize jitter
-            x = self.lastCursorPos[0] + (screenX - self.lastCursorPos[0]) * 0.1
-            y = self.lastCursorPos[1] + (screenY - self.lastCursorPos[1]) * 0.1
+            x = self.state.lastCursorPos[0] + (screenX - self.state.lastCursorPos[0]) * 0.1
+            y = self.state.lastCursorPos[1] + (screenY - self.state.lastCursorPos[1]) * 0.1
 
             pyautogui.moveTo(x, y)
-            self.lastCursorPos = (x, y)
+            self.state.lastCursorPos = (x, y)
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
@@ -125,7 +125,7 @@ class IrisSoftware:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            pyautogui.moveTo(screenX, screenY)
+            self.moveMouse(screenX, screenY)
             
         # Release the camera before exiting
         self.camera.release()
