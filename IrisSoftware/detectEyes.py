@@ -25,26 +25,18 @@ def tupleAdd(tup, a, b):
 
     return tup
 
-def getPupils(pupils, eyes):
-    '''Join together lists of detected blobs and eye detection boxes.
-     Uses the blob detection coordinates if available, otherwise uses the center of the cropped eye box instead'''
+def getPupils(pupils, eyes, cropHeights):
+    '''Add eye box and eyebrow crop coordinate offsets back in to transform the 
+    pupil coordinates from the blob detector back to the original image'''
 
-    def pickBestCoordinates(pupil, eyeBox):
-        (x, y, w, h) = eyeBox
-        if len(pupil) > 0:
-            return tupleAdd(pupil[0].pt, x, y) 
-        else: 
-            return tupleAdd((x, y), w/2, h/2)
-
-    return [pickBestCoordinates(pupil, eyeBox) for pupil, eyeBox in zip(pupils, eyes)]
+    return [tupleAdd(pupil[0].pt, x, y+cropHeight) for pupil, (x, y, w, h), cropHeight in zip(pupils, eyes, cropHeights) if len(pupil) > 0]
 
 def preprocessEyeImage(image):
     '''Preprocess a cropped black and white eye image to make it easier to detect the pupil'''
-    erodedImage = cv2.erode(image, None, iterations=2)
-    dialatedImage = cv2.dilate(erodedImage, None, iterations=4)
-    blurredImage = cv2.medianBlur(dialatedImage, 5)
-
-    return blurredImage
+    for _ in range(7):
+        cv2.medianBlur(image, 5, image)
+    
+    return image
 
 class EyeDetection:
     '''Class to manage eye detection'''
@@ -91,50 +83,34 @@ class EyeDetection:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         return self.eyeDetector.detectMultiScale(gray)
 
-    def eyeCascadeBlobDetector(self, image, demo=False):
+    def eyeCascadeBlobDetector(self, image):
         '''Detect eyes using a Haar cascade detector and blob detection'''
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        if demo:
-            cv2.imshow("Gray", gray)
-            cv2.waitKey()
 
         eyes = self.eyeDetector.detectMultiScale(gray)
         croppedEyes = [gray[y:y+h, x:x+w] for (x, y, w, h) in eyes]
-        if demo:
-            for i, eye in enumerate(croppedEyes):
-                cv2.imshow(f"Eye {i}", eye)
-            cv2.waitKey()
 
         eyes_bw = [cv2.threshold(eye, 45, 255, cv2.THRESH_BINARY)[1]
                 for eye in croppedEyes]
 
-        if demo:
-            for i, eye in enumerate(eyes_bw):
-                cv2.imshow(f"Binary {i}", eye)
-            cv2.waitKey()
+        # Crop out eyebrows (top 1/4 of eye image)
+        cropHeights = [eye.shape[0]//4 for eye in eyes_bw]
+        eyes_bw = [eye[eye.shape[0]//4:, :] for eye in eyes_bw]
 
-        eyes_bw = [cv2.medianBlur(cv2.dilate(cv2.erode(
-            eye, None, iterations=2), None, iterations=4), 5) for eye in eyes_bw]
+        eyes_processed = [preprocessEyeImage(eye) for eye in eyes_bw]
 
+        pupils = [self.blobDetector.detect(eye) for eye in eyes_processed]
 
-        pupils = [self.blobDetector.detect(eye) for eye in eyes_bw]
-        if demo:
-            for i, (eye, pupil) in enumerate(zip(eyes_bw, pupils)):
-                cv2.imwrite(f"pupil{i}.jpg", eye)
-                detected = cv2.drawKeypoints(
-                    eye, pupil, eye, (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-                cv2.imshow(f"Blob {i} detected", detected)
-            cv2.waitKey()
-
-        return getPupils(pupils, eyes)
+        return getPupils(pupils, eyes, cropHeights)
 
 
     def faceEyeCascadeDetector(self, image):
-        '''Detect eyes using a face Haar cascade detector, an eye Haar cascade detector'''
+        '''Detect eyes using a face Haar cascade detector, and an eye Haar cascade detector'''
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         faces = self.faceDetector.detectMultiScale(gray)
         if len(faces) == 0:
+            print("No face detected")
             return []
 
         face = max(faces, key=lambda box: box[2]*box[3])
@@ -146,30 +122,61 @@ class EyeDetection:
 
         return [tupleAdd((x+w/2, y+h/2), faceX, faceY) for (x, y, w, h) in eyes]
 
-    def faceEyeCascadeBlobDetector(self, image):
+    def faceEyeCascadeBlobDetector(self, image, demo=False):
         '''Detect eyes using a face Haar cascade detector, an eye Haar cascade detector, and blob detection'''
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        if demo:
+            cv2.imshow("Gray", gray)
+            cv2.waitKey()
 
         faces = self.faceDetector.detectMultiScale(gray)
         if len(faces) == 0:
+            print("No face detected")
             return []
 
         face = max(faces, key=lambda box: box[2]*box[3])
-
         faceX, faceY, faceW, faceH = face
         croppedFace = gray[faceY:faceY+faceH, faceX:faceX+faceW]
+        if demo:
+            cv2.imshow(f"Cropped Face", croppedFace)
+            cv2.waitKey()
 
         eyes = self.eyeDetector.detectMultiScale(croppedFace)
-        croppedEyes = [gray[y:y+h, x:x+w] for (x, y, w, h) in eyes]
+        croppedEyes = [croppedFace[y:y+h, x:x+w] for (x, y, w, h) in eyes]
+        if demo:
+            for i, eye in enumerate(croppedEyes):
+                cv2.imshow(f"Eye {i}", eye)
+            cv2.waitKey()
 
-        eyes_bw = [cv2.threshold(eye, 45, 255, cv2.THRESH_BINARY)[1]
-                for eye in croppedEyes]
+        eyes_bw = [cv2.threshold(eye, 45, 255, cv2.THRESH_BINARY)[1] for eye in croppedEyes]
+        if demo:
+            for i, eye in enumerate(eyes_bw):
+                cv2.imshow(f"Binary {i}", eye)
+            cv2.waitKey()
 
-        eyes_bw = [preprocessEyeImage(eye) for eye in eyes_bw]
+        # Crop out eyebrows (top 1/4 of eye image)
+        cropHeights = [eye.shape[0]//4 for eye in eyes_bw]
+        eyes_bw = [eye[eye.shape[0]//4:, :] for eye in eyes_bw]
+        if demo:
+            for i, eye in enumerate(eyes_bw):
+                cv2.imwrite(f"pupil{i}.jpg", eye)
+                cv2.imshow(f"Cropped Eyebrows {i}", eye)
+            cv2.waitKey()
 
-        pupils = [self.blobDetector.detect(eye) for eye in eyes_bw]
+        eyes_processed = [preprocessEyeImage(eye) for eye in eyes_bw]
+        if demo:
+            for i, eye in enumerate(eyes_processed):
+                cv2.imshow(f"Processed {i}", eye)
+            cv2.waitKey()
 
-        return [tupleAdd(pupil, faceX, faceY) for pupil in getPupils(pupils, eyes)]
+        pupils = [self.blobDetector.detect(eye) for eye in eyes_processed]
+        if demo:
+            for i, (eye, pupil) in enumerate(zip(eyes_processed, pupils)):
+                detected = cv2.drawKeypoints(eye, pupil, eye, (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                cv2.imshow(f"Blob {i} detected", detected)
+            cv2.waitKey()
+
+        return [tupleAdd(pupil, faceX, faceY) for pupil in getPupils(pupils, eyes, cropHeights)]
 
 
 def testRealtimeEyeDetection():
@@ -196,13 +203,13 @@ def testRealtimeEyeDetection():
     cv2.destroyAllWindows()
 
 
-def testDemoBlobDetection(demo=True):
+def testDemoBlobDetection():
     '''Run blob detection in demo mode to visualize each step of the process'''
     image = cv2.imread("sampleFace.jpg")
 
     eyeDetection = EyeDetection()
 
-    eyeDetection.eyeCascadeBlobDetector(image, demo)
+    eyeDetection.faceEyeCascadeBlobDetector(image, demo=True)
 
 
 def testTakePicture():
@@ -216,11 +223,17 @@ def testTakePicture():
 def testPupilBlobDetection():
     '''Test the blob detection algorithm in isolation on extracted black and white eye images'''
     image = cv2.imread("pupil0.jpg")
+    cv2.imshow("Eye", image)
+    cv2.waitKey();
 
     detectorParams = cv2.SimpleBlobDetector_Params()
     blobDetector = cv2.SimpleBlobDetector_create(detectorParams)
 
-    pupil = blobDetector.detect(image)
+    image_processed = preprocessEyeImage(image)
+    cv2.imshow("Processed Eye", image_processed)
+    cv2.waitKey()
+
+    pupil = blobDetector.detect(image_processed)
     print(pupil[0].pt)
 
     detected = cv2.drawKeypoints(image, pupil, np.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
@@ -231,6 +244,6 @@ def testPupilBlobDetection():
 
 if __name__ == "__main__":
     testRealtimeEyeDetection()
+    # testTakePicture()
     # testDemoBlobDetection()
     # testPupilBlobDetection()
-    # testTakePicture()
