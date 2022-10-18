@@ -1,6 +1,6 @@
 from enum import Enum
 import numpy as np
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 import pandas as pd 
 from scipy.interpolate import LinearNDInterpolator
 import os
@@ -10,7 +10,7 @@ class InterpolationType(Enum):
     LINEAR = 1
     RBF_LINEAR = 2
     LINEAR_REGRESSION = 3
-    
+    LOGISTIC_REGRESSION = 4
 
 def unpackEyeCoords(eyeCoords: list[list[tuple]]) -> list[tuple]:
     # unpacks [[(1,2),(3,4)], [(5,6), (7,8)]] to [(1,2,3,4), (5,6,7,8)]
@@ -39,6 +39,15 @@ class LinearRegressionInterpolator():
         prediction = self.model.predict(df_X.T)
         return prediction[-1]
 
+class LogisticRegressionInterpolator():
+    def __init__(self, eyeCoords: list[list[tuple]], screenCoords: list[tuple]):
+        df_X, df_Y = toCalibrationDataframes(eyeCoords, screenCoords)
+        self.model = LogisticRegression()
+        self.model.fit(df_X, df_Y)
+    def computeScreenCoords(self, eyeCoords):
+        df_X = pd.DataFrame(sum(eyeCoords, ()))
+        prediction = self.model.predict(df_X.T)
+        return prediction[-1]
         
 class LinearInterpolator():
     def __init__(self, eyeCoords: list[tuple], screenXCoords: list, screenYCoords: list):
