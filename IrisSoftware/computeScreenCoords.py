@@ -20,17 +20,24 @@ def unpackScreenCoords(screenCoords):
     screenXCoords, screenYCoords = zip(*screenCoords)
     return (list(screenXCoords), list(screenYCoords))
 
+def toCalibrationDataframes(eyeCoords: list[list[tuple]], screenCoords: list[tuple]):
+    unpackedEyes = unpackEyeCoords(eyeCoords)
+    df1 =pd.DataFrame(unpackedEyes)
+    df2 =pd.DataFrame(screenCoords)
+    df3 = pd.concat([df1,df2])
+    X = df3.iloc[:, 0:4]
+    Y = df3.iloc[:, -2:]
+    return X,Y
 class LinearRegressionInterpolator():
-    def __init__(self, eyeCoords: list[tuple], screenXCoords: list, screenYCoords: list):
-        df_X = pd.DataFrame(eyeCoords)
-        # TODO: restructure to perform unpacking in models instead of beforehand to account for differences in implementations
-        df_Y = pd.DataFrame(zip(screenXCoords, screenYCoords))
+    def __init__(self, eyeCoords: list[list[tuple]], screenCoords: list[tuple]):
+        df_X, df_Y = toCalibrationDataframes(eyeCoords, screenCoords)
         self.model = LinearRegression()
         self.model.fit(df_X, df_Y)
     def computeScreenCoords(self, eyeCoords):
-        df_X = pd.DataFrame(eyeCoords)
-        prediction = self.model.predict(df_X)
-        return list(prediction.itertuples(index=False, name=None))
+        df_X = pd.DataFrame(sum(eyeCoords, ()))
+        prediction = self.model.predict(df_X.T)
+        return prediction[-1]
+
         
 class LinearInterpolator():
     def __init__(self, eyeCoords: list[tuple], screenXCoords: list, screenYCoords: list):
@@ -65,9 +72,10 @@ class Interpolator():
 
 
     
-    def computeScreenCoords(self, eyeCoords) -> tuple:
+    def computeScreenCoords(self, eyeCoords: list[tuple]) -> tuple:
         # eyeCoords of shape [x1,y1,x2,y2]
-        unpackedEyeCoords = unpackEyeCoords(eyeCoords)
+        # unpackedEyeCoords = unpackEyeCoords(eyeCoords)
+        # print(unpackedEyeCoords)
         if self.interpolator is None:
-            raise ValueError('Interpolator not calibrated yet.') # TODO: create exception class to be more accurate? not sure
-        return self.interpolator.computeScreenCoords(unpackedEyeCoords)
+            raise ValueError('Error calibrating interpolator.')
+        return self.interpolator.computeScreenCoords(eyeCoords)
