@@ -102,10 +102,8 @@ class MainWindow(Window):
 
     def positionInTopRightCorner(self):
         self.move(
-            QApplication.primaryScreen().availableGeometry().right()
-            - self.width()
-            - self.margin,
-            QApplication.primaryScreen().availableGeometry().top() + self.margin,
+            QApplication.primaryScreen().availableGeometry().right() - self.width(),
+            QApplication.primaryScreen().availableGeometry().top(),
         )
 
     def __calculatePreviewSize(self, cameraResolution: tuple[int]) -> QtCore.QSize:
@@ -120,34 +118,27 @@ class MainWindow(Window):
         self.cameraFrameSignal.connect(self.__displayCameraFrame)
 
     def __setupUI(self):
-        # Create main window
-        centralWidget = QWidget()
-        # Create layout container
-        layout = QVBoxLayout(centralWidget)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        # Create video preview
         self.videoPreview = QLabel()
-        self.videoPreview.setFixedSize(self.previewSize)
-        layout.addWidget(self.videoPreview)
-        # Create buttons
-        buttonContainer = QWidget()
-        buttonContainerLayout = QHBoxLayout(buttonContainer)
+        self.setFixedSize(self.previewSize)
+
+        vLayout = QVBoxLayout(self.videoPreview)
+        hLayout = QHBoxLayout()
+
         self.menuButton = Button("Menu")
         self.menuButton.clicked.connect(self.openMenuSignal.emit)
-        buttonContainerLayout.addWidget(self.menuButton)
-        layout.addWidget(buttonContainer, alignment=QtCore.Qt.AlignCenter)
 
-        # Set the main window
-        self.setCentralWidget(centralWidget)
-        # Set the position and size of the main window
+        hLayout.addStretch()
+        hLayout.addWidget(self.menuButton)
+        vLayout.addLayout(hLayout)
+        vLayout.addStretch()
+
+        self.setCentralWidget(self.videoPreview)
         self.positionInTopRightCorner()
 
     def __init__(self, cameraResolution: tuple[int, int]):
         super().__init__()
         # Properties
         self.previewSize = self.__calculatePreviewSize(cameraResolution)
-        self.margin = 40
 
         # Initialize UI elements
         self.videoPreview: QLabel = None
