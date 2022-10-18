@@ -84,10 +84,8 @@ class IrisSoftware:
             self.eyeDetector.detectionType = (
                 EyeDetection.DetectionType.FACE_EYE_CASCADE_BLOB
             )
-        elif value == PupilModelOptions.BALANCED:
-            self.eyeDetector.detectionType = EyeDetection.DetectionType.EYE_CASCADE_BLOB
         elif value == PupilModelOptions.SPEED:
-            self.eyeDetector.detectionType = EyeDetection.DetectionType.EYE_CASCADE
+            self.eyeDetector.detectionType = EyeDetection.DetectionType.EYE_CASCADE_BLOB
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []

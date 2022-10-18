@@ -411,8 +411,7 @@ class PupilModelOptions(Enum):
     """Helper enum for pupil models."""
 
     ACCURACY = 1
-    BALANCED = 2
-    SPEED = 3
+    SPEED = 2
 
 
 class MenuWindow(Window):
@@ -430,7 +429,6 @@ class MenuWindow(Window):
 
         self.pupilModelMapping = {
             PupilModelOptions.ACCURACY: "Accuracy",
-            PupilModelOptions.BALANCED: "Balanced",
             PupilModelOptions.SPEED: "Speed",
         }
         self.pupilModelSelectionGroup: SelectionGroup
@@ -455,10 +453,6 @@ class MenuWindow(Window):
             SelectionGroup.SelectionOption(
                 self.pupilModelMapping[PupilModelOptions.ACCURACY],
                 self.__modelChangeAccuracyCallback,
-            ),
-            SelectionGroup.SelectionOption(
-                self.pupilModelMapping[PupilModelOptions.BALANCED],
-                self.__modelChangeBalancedCallback,
             ),
             SelectionGroup.SelectionOption(
                 self.pupilModelMapping[PupilModelOptions.SPEED],
