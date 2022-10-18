@@ -130,7 +130,6 @@ class IrisSoftware:
 
             # # Determine screen coordinates from eye coordinates
             screenX, screenY = self.safeComputeCoords(eyeCoords)
-            print('moving to: ', screenX, screenY)
 
             # # Click the mouse if the user has blinked
             # if didBlink:
