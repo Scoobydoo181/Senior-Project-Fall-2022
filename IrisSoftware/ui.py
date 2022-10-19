@@ -2,7 +2,7 @@
 import sys
 import pathlib
 from PySide6.QtWidgets import QApplication
-from widgets import MainWindow, CalibrationWindow, MenuWindow
+from widgets import MainWindow, CalibrationWindow, MenuWindow, PupilModelOptions
 from PySide6 import QtCore, QtGui
 
 
@@ -27,6 +27,7 @@ class UI:
         self.onCaptureCalibrationEyeCoords: callable
         self.onCalibrationCancel: callable
         self.onCalibrationComplete: callable
+        self.onChangePupilModel: callable
         # Connect signal handlers
         self.mainWindow.openMenuSignal.connect(self.__handleMenuOpen)
         print("UI initialized.")
@@ -78,10 +79,16 @@ class UI:
 
     ### Signal handlers ###
 
+    @QtCore.Slot(PupilModelOptions)
+    def __handleChangePupilModel(self, value: PupilModelOptions):
+        if hasattr(self, "onChangePupilModel"):
+            self.onChangePupilModel(value)
+
     @QtCore.Slot()
     def __handleMenuOpen(self):
         self.menuWindow = MenuWindow()
         self.menuWindow.openCalibrationSignal.connect(self.__handleCalibrationOpen)
+        self.menuWindow.changePupilModelSignal.connect(self.__handleChangePupilModel)
         self.menuWindow.show()
 
     @QtCore.Slot()

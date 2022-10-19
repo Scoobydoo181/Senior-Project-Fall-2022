@@ -1,6 +1,7 @@
 """A collection of widgets for the UI."""
 import math
 import sys
+from enum import Enum
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -84,7 +85,7 @@ class Window(QMainWindow):
 class MainWindow(Window):
     """Main widget showing the video stream in the corner."""
 
-    TARGET_PREVIEW_HEIGHT = 480
+    TARGET_PREVIEW_HEIGHT = 240
 
     cameraFrameSignal = QtCore.Signal(ndarray)
     openMenuSignal = QtCore.Signal()
@@ -101,10 +102,8 @@ class MainWindow(Window):
 
     def positionInTopRightCorner(self):
         self.move(
-            QApplication.primaryScreen().availableGeometry().right()
-            - self.width()
-            - self.margin,
-            QApplication.primaryScreen().availableGeometry().top() + self.margin,
+            QApplication.primaryScreen().availableGeometry().right() - self.width(),
+            QApplication.primaryScreen().availableGeometry().top(),
         )
 
     def __calculatePreviewSize(self, cameraResolution: tuple[int]) -> QtCore.QSize:
@@ -119,34 +118,27 @@ class MainWindow(Window):
         self.cameraFrameSignal.connect(self.__displayCameraFrame)
 
     def __setupUI(self):
-        # Create main window
-        centralWidget = QWidget()
-        # Create layout container
-        layout = QVBoxLayout(centralWidget)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        # Create video preview
         self.videoPreview = QLabel()
-        self.videoPreview.setFixedSize(self.previewSize)
-        layout.addWidget(self.videoPreview)
-        # Create buttons
-        buttonContainer = QWidget()
-        buttonContainerLayout = QHBoxLayout(buttonContainer)
+        self.setFixedSize(self.previewSize)
+
+        vLayout = QVBoxLayout(self.videoPreview)
+        hLayout = QHBoxLayout()
+
         self.menuButton = Button("Menu")
         self.menuButton.clicked.connect(self.openMenuSignal.emit)
-        buttonContainerLayout.addWidget(self.menuButton)
-        layout.addWidget(buttonContainer, alignment=QtCore.Qt.AlignCenter)
 
-        # Set the main window
-        self.setCentralWidget(centralWidget)
-        # Set the position and size of the main window
+        hLayout.addStretch()
+        hLayout.addWidget(self.menuButton)
+        vLayout.addLayout(hLayout)
+        vLayout.addStretch()
+
+        self.setCentralWidget(self.videoPreview)
         self.positionInTopRightCorner()
 
     def __init__(self, cameraResolution: tuple[int, int]):
         super().__init__()
         # Properties
         self.previewSize = self.__calculatePreviewSize(cameraResolution)
-        self.margin = 40
 
         # Initialize UI elements
         self.videoPreview: QLabel = None
@@ -335,15 +327,19 @@ class CalibrationCircle(QPushButton):
 class Button(QPushButton):
     """Styled button."""
 
-    def __setStyle(self, variant: str):
+    def changeVariant(self, variant: str):
+        self.variant = variant
+        self.__setStyle()
+
+    def __setStyle(self):
         bgColor = (
             DesignTokens.buttonPrimaryBgColor
-            if variant == "primary"
+            if self.variant == "primary"
             else DesignTokens.buttonBaseBgColor
         )
         borderColor = (
             DesignTokens.buttonPrimaryBorderColor
-            if variant == "primary"
+            if self.variant == "primary"
             else DesignTokens.buttonBaseBorderColor
         )
 
@@ -362,34 +358,141 @@ class Button(QPushButton):
     def __init__(self, label: str, parent: QWidget = None, variant: str = "base"):
         super().__init__(text=label, parent=parent)
 
-        self.__setStyle(variant)
+        self.variant = variant
+
+        self.__setStyle()
+
+
+class SelectionGroup(QWidget):
+    """Group of buttons for selecting an option."""
+
+    class SelectionOption:
+        """Helper type for SelectionGroup."""
+
+        def __init__(self, label: str, callback: callable) -> None:
+            self.label = label
+            self.callback = callback
+
+    def __init__(self, options: list[SelectionOption], default: int = 0):
+        super().__init__()
+
+        self.default = default
+        self.options = options
+        self.buttons: list[Button] = []
+        self.mapping: dict[str, int] = {}
+
+        self.__setupUI()
+
+    def updateSelection(self, label: str):
+        target = self.mapping[label]
+
+        for i, v in enumerate(self.buttons):
+            if i == target:
+                v.changeVariant("primary")
+            else:
+                v.changeVariant("base")
+
+    def __setupUI(self):
+        layout = QHBoxLayout(self)
+
+        for i, opt in enumerate(self.options):
+            button = Button(opt.label)
+            if i == self.default:
+                button.changeVariant("primary")
+            button.clicked.connect(opt.callback)
+            self.mapping[opt.label] = i
+            self.buttons.append(button)
+            layout.addWidget(button)
+
+        layout.addStretch()
+
+
+class PupilModelOptions(Enum):
+    """Helper enum for pupil models."""
+
+    ACCURACY = 1
+    SPEED = 2
 
 
 class MenuWindow(Window):
     """Menu for settings of the program."""
 
     openCalibrationSignal = QtCore.Signal()
+    changePupilModelSignal = QtCore.Signal(PupilModelOptions)
 
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Iris Software - Menu")
 
+        self.calibrationButtonContainer: QWidget
+
+        self.pupilModelMapping = {
+            PupilModelOptions.ACCURACY: "Accuracy",
+            PupilModelOptions.SPEED: "Speed",
+        }
+        self.pupilModelSelectionGroup: SelectionGroup
+
         self.__setupUI()
+
+    def __modelChangeCallback(self, value: PupilModelOptions):
+        self.changePupilModelSignal.emit(value)
+        self.pupilModelSelectionGroup.updateSelection(self.pupilModelMapping[value])
+
+    def __modelChangeAccuracyCallback(self):
+        self.__modelChangeCallback(PupilModelOptions.ACCURACY)
+
+    def __modelChangeBalancedCallback(self):
+        self.__modelChangeCallback(PupilModelOptions.BALANCED)
+
+    def __modelChangeSpeedCallback(self):
+        self.__modelChangeCallback(PupilModelOptions.SPEED)
+
+    def __setupPupilModelSelectionGroup(self):
+        pupilModelSelectionOptions = [
+            SelectionGroup.SelectionOption(
+                self.pupilModelMapping[PupilModelOptions.ACCURACY],
+                self.__modelChangeAccuracyCallback,
+            ),
+            SelectionGroup.SelectionOption(
+                self.pupilModelMapping[PupilModelOptions.SPEED],
+                self.__modelChangeSpeedCallback,
+            ),
+        ]
+
+        self.pupilModelSelectionGroup = SelectionGroup(pupilModelSelectionOptions)
+
+    def __setupCalibrationButton(self):
+        self.calibrationButtonContainer = QWidget()
+        layout = QHBoxLayout(self.calibrationButtonContainer)
+
+        calibrationButton = Button("Calibrate")
+        calibrationButton.clicked.connect(self.openCalibrationSignal.emit)
+
+        layout.addWidget(calibrationButton)
+        layout.addStretch()
 
     def __setupUI(self):
         centralWidget = QWidget()
-        layout = QVBoxLayout(centralWidget)
+        centerLayout = QHBoxLayout(centralWidget)
+        centerLayout.addStretch()
+        layout = QVBoxLayout()
+        centerLayout.addLayout(layout)
+        centerLayout.addStretch()
 
         modelPrioritizationLabel = QLabel("Model Prioritization")
         blinkSensitivityLabel = QLabel("Blink Sensitivity")
         calibrationLabel = QLabel("Calibration")
-        self.calibrationButton = Button("Calibrate")
-        self.calibrationButton.clicked.connect(self.openCalibrationSignal.emit)
 
+        self.__setupCalibrationButton()
+        self.__setupPupilModelSelectionGroup()
+
+        layout.addStretch()
         layout.addWidget(modelPrioritizationLabel)
+        layout.addWidget(self.pupilModelSelectionGroup)
         layout.addWidget(blinkSensitivityLabel)
         layout.addWidget(calibrationLabel)
-        layout.addWidget(self.calibrationButton)
+        layout.addWidget(self.calibrationButtonContainer)
+        layout.addStretch()
 
         self.setCentralWidget(centralWidget)
