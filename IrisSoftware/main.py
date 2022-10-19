@@ -136,7 +136,7 @@ class IrisSoftware:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            self.moveMouse(screenX, screenY)
+            # self.moveMouse(screenX, screenY)
             
         # Release the camera before exiting
         self.camera.release()
