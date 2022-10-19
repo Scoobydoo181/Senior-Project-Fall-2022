@@ -58,9 +58,25 @@ class EyeDetection:
 
         self.detectionType = EyeDetection.DetectionType.FACE_EYE_CASCADE_BLOB
 
+        self.blobThreshold = 45
+
     def setDetectionType(self, detectionType):
         '''Set the detection type to the specified enum value'''
         self.detectionType = detectionType
+
+    def setBlobThreshold(self, threshold):
+        '''Set the greyscale threshold used internally when converting images to black and white 
+        for the blob detector. 
+        
+        Range: 0-255. 
+        
+        Pixels lower than the threshold will be set to 0 (black), 
+        and pixels higher than the threshold will be set to 255 (white).
+        
+        Users with darker eye colors should user a lower threshold, 
+        and users with ligher eye colors should user a higher threshold 
+        to make sure the iris is captured in the blob detector'''
+        self.blobThreshold = threshold
 
     @filterFalsePositives
     def detectEyes(self, image):
@@ -90,7 +106,7 @@ class EyeDetection:
         eyes = self.eyeDetector.detectMultiScale(gray)
         croppedEyes = [gray[y:y+h, x:x+w] for (x, y, w, h) in eyes]
 
-        eyes_bw = [cv2.threshold(eye, 45, 255, cv2.THRESH_BINARY)[1]
+        eyes_bw = [cv2.threshold(eye, self.blobThreshold, 255, cv2.THRESH_BINARY)[1]
                 for eye in croppedEyes]
 
         # Crop out eyebrows (top 1/4 of eye image)
@@ -148,7 +164,7 @@ class EyeDetection:
                 cv2.imshow(f"Eye {i}", eye)
             cv2.waitKey()
 
-        eyes_bw = [cv2.threshold(eye, 45, 255, cv2.THRESH_BINARY)[1] for eye in croppedEyes]
+        eyes_bw = [cv2.threshold(eye, self.blobThreshold, 255, cv2.THRESH_BINARY)[1] for eye in croppedEyes]
         if demo:
             for i, eye in enumerate(eyes_bw):
                 cv2.imshow(f"Binary {i}", eye)
