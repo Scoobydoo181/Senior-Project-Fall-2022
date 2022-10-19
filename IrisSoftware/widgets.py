@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QApplication,
     QHBoxLayout,
+    QSlider,
 )
 import cv2
 import qimage2ndarray
@@ -25,7 +26,11 @@ class DesignTokens:
     macOSDarkerGray = "#1E1E1E"
     blue700 = "#1D4ED8"
     zinc700 = "#3F3F46"
+    zinc600 = "#52525b"
     zinc500 = "#71717A"
+    zinc400 = "#a1a1aa"
+    zinc300 = "#d4d4d8"
+    zinc200 = "#e4e4e7"
     zinc50 = "#F9FAFB"
     ### ###
 
@@ -36,6 +41,8 @@ class DesignTokens:
     fontSizeXl = "20px"
     fontSize2Xl = "24px"
     fontSize4Xl = "36px"
+    textColorBase = zinc50
+    textColorLight = zinc400
     ### ###
 
     maxWidthProse = 520
@@ -51,13 +58,21 @@ class DesignTokens:
     buttonBaseBorderStyle = "solid"
     buttonBasePadding = "6px 24px"
     buttonBaseFontWeight = 500
+    # Slider
+    sliderGrooveBgColor = zinc700
+    sliderGrooveHeight = "8px"
+    sliderGrooveBorderRadius = "4px"
+    sliderHandleBgColor = blue700
+    sliderHandleSize = "16px"
+    sliderHandleBorderRadius = "8px"
+    sliderHandleMargin = "-4px 0"
     # Circle
     circleBaseBgColor = zinc700
     circleActiveBgColor = blue700
     circleBaseSize = 80
     # Window
     windowBgColor = macOSDarkGray
-    windowTextColor = zinc50
+    windowTextColor = textColorBase
     windowFontSize = fontSizeBase
     windowFontFamily = fontFamilies
     ### ###
@@ -363,6 +378,71 @@ class Button(QPushButton):
         self.__setStyle()
 
 
+class ProseText(QLabel):
+    """Text with a constrained width."""
+
+    def __setStyle(self):
+        textColor = (
+            DesignTokens.textColorLight if self.light else DesignTokens.textColorBase
+        )
+
+        self.setStyleSheet(
+            f"""
+            color: {textColor};
+            max-width: {DesignTokens.maxWidthProse};
+            """
+        )
+
+        self.setWordWrap(True)
+        self.setMinimumWidth(DesignTokens.maxWidthProse)
+
+    def __init__(self, text: str, light: bool = False):
+        super().__init__(text)
+
+        self.light = light
+
+        self.__setStyle()
+
+
+class Slider(QSlider):
+    """
+    Styled slider.
+
+    For styling tips, see https://doc.qt.io/qt-5/stylesheet-examples.html#customizing-qslider.
+    """
+
+    def __setStyle(self):
+        self.setStyleSheet(
+            f"""
+            QSlider::groove {{
+                background-color: {DesignTokens.sliderGrooveBgColor};
+                height: {DesignTokens.sliderGrooveHeight};
+                border-radius: {DesignTokens.sliderGrooveBorderRadius};
+            }}
+            QSlider::handle {{
+                background-color: {DesignTokens.sliderHandleBgColor};
+                height: {DesignTokens.sliderHandleSize};
+                width: {DesignTokens.sliderHandleSize};
+                border-radius: {DesignTokens.sliderHandleBorderRadius};
+                margin: {DesignTokens.sliderHandleMargin};
+            }}
+            """
+        )
+
+    def __init__(
+        self,
+        low: int,
+        high: int,
+        orientation: QtCore.Qt.Orientation = QtCore.Qt.Orientation.Horizontal,
+    ):
+        super().__init__(orientation)
+
+        self.setMinimum(low)
+        self.setMaximum(high)
+
+        self.__setStyle()
+
+
 class SelectionGroup(QWidget):
     """Group of buttons for selecting an option."""
 
@@ -427,6 +507,8 @@ class MenuWindow(Window):
 
         self.calibrationButtonContainer: QWidget
 
+        self.eyeColorThresholdContainer: QWidget
+
         self.pupilModelMapping = {
             PupilModelOptions.ACCURACY: "Accuracy",
             PupilModelOptions.SPEED: "Speed",
@@ -441,9 +523,6 @@ class MenuWindow(Window):
 
     def __modelChangeAccuracyCallback(self):
         self.__modelChangeCallback(PupilModelOptions.ACCURACY)
-
-    def __modelChangeBalancedCallback(self):
-        self.__modelChangeCallback(PupilModelOptions.BALANCED)
 
     def __modelChangeSpeedCallback(self):
         self.__modelChangeCallback(PupilModelOptions.SPEED)
@@ -461,6 +540,15 @@ class MenuWindow(Window):
         ]
 
         self.pupilModelSelectionGroup = SelectionGroup(pupilModelSelectionOptions)
+
+    def __setupEyeColorThresholdSlider(self):
+        self.eyeColorThresholdContainer = QWidget()
+        layout = QHBoxLayout(self.eyeColorThresholdContainer)
+
+        eyeColorThresholdSlider = Slider(1, 10)
+
+        layout.addWidget(eyeColorThresholdSlider)
+        layout.addStretch()
 
     def __setupCalibrationButton(self):
         self.calibrationButtonContainer = QWidget()
@@ -480,17 +568,24 @@ class MenuWindow(Window):
         centerLayout.addLayout(layout)
         centerLayout.addStretch()
 
-        modelPrioritizationLabel = QLabel("Model Prioritization")
-        blinkSensitivityLabel = QLabel("Blink Sensitivity")
-        calibrationLabel = QLabel("Calibration")
+        modelPrioritizationLabel = ProseText("Model Prioritization")
+        eyeColorThresholdLabel = ProseText("Eye Color Threshold")
+        eyeColorThresholdDesc = ProseText(
+            "Adjust this if the program is not properly detecting your pupils. A higher value will work better for light colored eyes.",
+            True,
+        )
+        calibrationLabel = ProseText("Calibration")
 
         self.__setupCalibrationButton()
         self.__setupPupilModelSelectionGroup()
+        self.__setupEyeColorThresholdSlider()
 
         layout.addStretch()
         layout.addWidget(modelPrioritizationLabel)
         layout.addWidget(self.pupilModelSelectionGroup)
-        layout.addWidget(blinkSensitivityLabel)
+        layout.addWidget(eyeColorThresholdLabel)
+        layout.addWidget(eyeColorThresholdDesc)
+        layout.addWidget(self.eyeColorThresholdContainer)
         layout.addWidget(calibrationLabel)
         layout.addWidget(self.calibrationButtonContainer)
         layout.addStretch()
