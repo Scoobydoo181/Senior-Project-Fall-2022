@@ -499,6 +499,7 @@ class MenuWindow(Window):
 
     openCalibrationSignal = QtCore.Signal()
     changePupilModelSignal = QtCore.Signal(PupilModelOptions)
+    changeEyeColorThresholdSignal = QtCore.Signal(int)
 
     def __init__(self):
         super().__init__()
@@ -546,6 +547,9 @@ class MenuWindow(Window):
         layout = QHBoxLayout(self.eyeColorThresholdContainer)
 
         eyeColorThresholdSlider = Slider(1, 10)
+        eyeColorThresholdSlider.valueChanged.connect(
+            self.changeEyeColorThresholdSignal.emit
+        )
 
         layout.addWidget(eyeColorThresholdSlider)
         layout.addStretch()
