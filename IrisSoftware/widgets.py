@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 import cv2
 import qimage2ndarray
 from numpy import ndarray
+from settings import loadSettings, PupilModelOptions
 
 
 class DesignTokens:
@@ -433,12 +434,15 @@ class Slider(QSlider):
         self,
         low: int,
         high: int,
+        initialValue: int = None,
         orientation: QtCore.Qt.Orientation = QtCore.Qt.Orientation.Horizontal,
     ):
         super().__init__(orientation)
 
         self.setMinimum(low)
         self.setMaximum(high)
+        if initialValue:
+            self.setValue(initialValue)
 
         self.__setStyle()
 
@@ -453,10 +457,10 @@ class SelectionGroup(QWidget):
             self.label = label
             self.callback = callback
 
-    def __init__(self, options: list[SelectionOption], default: int = 0):
+    def __init__(self, options: list[SelectionOption], initialSelection: int = 0):
         super().__init__()
 
-        self.default = default
+        self.initialSelection = initialSelection
         self.options = options
         self.buttons: list[Button] = []
         self.mapping: dict[str, int] = {}
@@ -477,7 +481,7 @@ class SelectionGroup(QWidget):
 
         for i, opt in enumerate(self.options):
             button = Button(opt.label)
-            if i == self.default:
+            if i == self.initialSelection:
                 button.changeVariant("primary")
             button.clicked.connect(opt.callback)
             self.mapping[opt.label] = i
@@ -485,13 +489,6 @@ class SelectionGroup(QWidget):
             layout.addWidget(button)
 
         layout.addStretch()
-
-
-class PupilModelOptions(Enum):
-    """Helper enum for pupil models."""
-
-    ACCURACY = 1
-    SPEED = 2
 
 
 class MenuWindow(Window):
@@ -505,6 +502,8 @@ class MenuWindow(Window):
         super().__init__()
 
         self.setWindowTitle("Iris Software - Menu")
+
+        self.savedSettings = loadSettings()
 
         self.calibrationButtonContainer: QWidget
 
@@ -540,13 +539,19 @@ class MenuWindow(Window):
             ),
         ]
 
-        self.pupilModelSelectionGroup = SelectionGroup(pupilModelSelectionOptions)
+        defaultValue = 0
+        if self.savedSettings.pupilDetectionModel is PupilModelOptions.SPEED:
+            defaultValue = 1
+
+        self.pupilModelSelectionGroup = SelectionGroup(
+            pupilModelSelectionOptions, defaultValue
+        )
 
     def __setupEyeColorThresholdSlider(self):
         self.eyeColorThresholdContainer = QWidget()
         layout = QHBoxLayout(self.eyeColorThresholdContainer)
 
-        eyeColorThresholdSlider = Slider(1, 10)
+        eyeColorThresholdSlider = Slider(1, 10, self.savedSettings.eyeColorThreshold)
         eyeColorThresholdSlider.valueChanged.connect(
             self.changeEyeColorThresholdSignal.emit
         )
