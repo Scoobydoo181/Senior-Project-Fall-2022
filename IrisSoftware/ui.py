@@ -28,6 +28,7 @@ class UI:
         self.onCalibrationCancel: callable
         self.onCalibrationComplete: callable
         self.onChangePupilModel: callable
+        self.onChangeEyeColorThreshold: callable
         # Connect signal handlers
         self.mainWindow.openMenuSignal.connect(self.__handleMenuOpen)
         print("UI initialized.")
@@ -84,11 +85,19 @@ class UI:
         if hasattr(self, "onChangePupilModel"):
             self.onChangePupilModel(value)
 
+    @QtCore.Slot(int)
+    def __handleChangeEyeColorThreshold(self, value: int):
+        if hasattr(self, "onChangeEyeColorThreshold"):
+            self.onChangeEyeColorThreshold(value)
+
     @QtCore.Slot()
     def __handleMenuOpen(self):
         self.menuWindow = MenuWindow()
         self.menuWindow.openCalibrationSignal.connect(self.__handleCalibrationOpen)
         self.menuWindow.changePupilModelSignal.connect(self.__handleChangePupilModel)
+        self.menuWindow.changeEyeColorThresholdSignal.connect(
+            self.__handleChangeEyeColorThreshold
+        )
         self.menuWindow.show()
 
     @QtCore.Slot()

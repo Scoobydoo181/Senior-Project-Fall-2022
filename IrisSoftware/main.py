@@ -37,6 +37,7 @@ class IrisSoftware:
         self.ui.onCaptureCalibrationEyeCoords = self.captureCalibrationEyeCoords
         self.ui.onCalibrationCancel = self.resetCalibrationEyeCoords
         self.ui.onChangePupilModel = self.changePupilModel
+        self.ui.onChangeEyeColorThreshold = self.changeEyeColorThreshold
 
         self.processingThread: threading.Thread
 
@@ -78,6 +79,11 @@ class IrisSoftware:
             return tuple([resolution // 2 for resolution in res])
 
         return self.interpolator.computeScreenCoords(eyeCoords)
+
+    def changeEyeColorThreshold(self, value: int):
+        """Take a value from 1-10 and scale it up."""
+        transformedValue = 45 + 5 * (value - 1)
+        self.eyeDetector.setBlobThreshold(transformedValue)
 
     def changePupilModel(self, value: PupilModelOptions):
         if value == PupilModelOptions.ACCURACY:
