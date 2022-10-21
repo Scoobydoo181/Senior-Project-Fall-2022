@@ -4,12 +4,12 @@ import pickle
 import sys
 import threading
 import cv2
-from numpy import ndarray
 import pyautogui
 from detectEyes import EyeDetection
 from computeScreenCoords import Interpolator
 from ui import UI, CALIBRATION_FILE_NAME, PupilModelOptions
 from camera import Camera
+from settings import loadSettings, saveSettings
 
 
 class IrisSoftware:
@@ -26,6 +26,7 @@ class IrisSoftware:
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
+        self.settings = loadSettings()
         self.state = IrisSoftware.State()
 
         self.eyeDetector = EyeDetection()
@@ -82,10 +83,13 @@ class IrisSoftware:
 
     def changeEyeColorThreshold(self, value: int):
         """Take a value from 1-10 and scale it up."""
+        self.settings.eyeColorThreshold = value
         transformedValue = 45 + 5 * (value - 1)
         self.eyeDetector.setBlobThreshold(transformedValue)
+        saveSettings(self.settings)
 
     def changePupilModel(self, value: PupilModelOptions):
+        self.settings.pupilDetectionModel = value
         if value == PupilModelOptions.ACCURACY:
             self.eyeDetector.setDetectionType(
                 EyeDetection.DetectionType.FACE_EYE_CASCADE_BLOB
@@ -94,6 +98,7 @@ class IrisSoftware:
             self.eyeDetector.setDetectionType(
                 EyeDetection.DetectionType.EYE_CASCADE_BLOB
             )
+        saveSettings(self.settings)
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
