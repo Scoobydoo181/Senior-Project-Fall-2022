@@ -177,6 +177,7 @@ class CalibrationWindow(Window):
     completeSignal = QtCore.Signal()
     cancelSignal = QtCore.Signal()
     captureEyeCoordsSignal = QtCore.Signal()
+    finishedCaptureEyeCoordsSignal = QtCore.Signal()
 
     @QtCore.Slot()
     def __cancelCalibration(self):
@@ -188,6 +189,17 @@ class CalibrationWindow(Window):
         self.__drawCircles()
         # Activate the first circle
         self.circles[self.activeCircleIndex].toggleActive()
+
+    @QtCore.Slot()
+    def __progressCalibration(self):
+        # Check if calibration is complete
+        if self.activeCircleIndex >= len(self.circles) - 1:
+            self.completeSignal.emit()
+        # Otherwise, continue through calibration
+        else:
+            self.circles[self.activeCircleIndex].setParent(None)
+            self.activeCircleIndex += 1
+            self.circles[self.activeCircleIndex].toggleActive()
 
     def getCircleLocations(self):
         # Get the screen geometry
@@ -220,16 +232,8 @@ class CalibrationWindow(Window):
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         # If calibration has begun and the spacebar was pressed
         if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
-            # Capture calibration eye coords
+            self.circles[self.activeCircleIndex].setLoading()
             self.captureEyeCoordsSignal.emit()
-            # Check if calibration is complete
-            if self.activeCircleIndex >= len(self.circles) - 1:
-                self.completeSignal.emit()
-            # Otherwise, continue through calibration
-            else:
-                self.circles[self.activeCircleIndex].setParent(None)
-                self.activeCircleIndex += 1
-                self.circles[self.activeCircleIndex].toggleActive()
         elif event.key() == QtCore.Qt.Key_Escape:
             # Exit on esc press
             self.cancelSignal.emit()
@@ -303,6 +307,8 @@ class CalibrationWindow(Window):
         self.activeCircleIndex: int = 0
         self.circles: list[CalibrationCircle] = []
 
+        self.finishedCaptureEyeCoordsSignal.connect(self.__progressCalibration)
+
         self.__setupUI()
 
 
@@ -314,6 +320,9 @@ class CalibrationCircle(QPushButton):
     def toggleActive(self):
         self.active = not self.active
         self.__setStyle()
+
+    def setLoading(self):
+        self.setText("...")
 
     def __setStyle(self):
         bgColor = (
