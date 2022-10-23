@@ -101,7 +101,7 @@ class Window(QMainWindow):
 class MainWindow(Window):
     """Main widget showing the video stream in the corner."""
 
-    TARGET_PREVIEW_HEIGHT = 240
+    TARGET_PREVIEW_HEIGHT = 480
 
     cameraFrameSignal = QtCore.Signal(ndarray)
     openMenuSignal = QtCore.Signal()
