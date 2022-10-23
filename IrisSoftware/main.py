@@ -109,7 +109,7 @@ class IrisSoftware:
         detectedPupils = False
         framesToCapture = 10
 
-        for i in range(1, 11):
+        for i in range(1, 21):
             self.changeEyeColorThreshold(i)
 
             currDetectedEyeCoords = []
@@ -118,13 +118,13 @@ class IrisSoftware:
             for _ in range(framesToCapture):
                 frame = self.camera.getFrame()
                 eyeCoords = self.eyeDetector.detectEyes(frame)
-                if eyeCoords:
+                if len(eyeCoords) >= 2:
                     currDetectedEyeCoords.append(eyeCoords)
 
             # Ensure that eyeCoords are found in each frame
-            if len(currDetectedEyeCoords) >= framesToCapture:
-                print(currDetectedEyeCoords)
-                print(f"Initial configuration eye threshold: {i}")
+            if len(currDetectedEyeCoords) >= int(framesToCapture * 0.8):
+                print(f"Initial configuration eye threshold: {i + 1}")
+                self.changeEyeColorThreshold(i + 1)
                 detectedPupils = True
                 break
 
@@ -136,12 +136,21 @@ class IrisSoftware:
 
     def captureCalibrationEyeCoords(self):
         """Captures and stores a eye coords for calibration."""
-        frame = self.camera.getFrame()
-        eyeCoords = self.eyeDetector.detectEyes(frame)
+        eyeCoords = []
+        maxFramesToCapture = 30
+
+        for _ in range(maxFramesToCapture):
+            frame = self.camera.getFrame()
+            eyeCoords = self.eyeDetector.detectEyes(frame)
+            if len(eyeCoords) >= 2:
+                break
+
         if len(eyeCoords) < 2:
             eyeCoords = [(None, None), (None, None)]
+
         self.state.calibrationEyeCoords.append(eyeCoords)
-        print("Captured calibration eye coords.")
+        print(f"Captured calibration eye coords: {eyeCoords}")
+        self.ui.emitFinishedCaptureEyeCoords()
 
     def saveCalibrationData(self):
         """Saves the current calibration data and trains the screen coords model."""

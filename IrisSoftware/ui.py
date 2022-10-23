@@ -54,6 +54,9 @@ class UI:
     def emitCameraFrame(self, frame):
         self.mainWindow.cameraFrameSignal.emit(frame)
 
+    def emitFinishedCaptureEyeCoords(self):
+        self.calibrationWindow.finishedCaptureEyeCoordsSignal.emit()
+
     def __openCalibration(self, initial=False):
         # Create window
         self.calibrationWindow = CalibrationWindow()
