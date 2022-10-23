@@ -1,16 +1,20 @@
 from enum import Enum
 import numpy as np
 from sklearn.linear_model import LinearRegression, LogisticRegression
+import sklearn
 import pandas as pd 
 from scipy.interpolate import LinearNDInterpolator
 import os
 import pickle
+import matplotlib.pyplot as plt
+from statistics import mean
 from ui import CALIBRATION_FILE_NAME
 class InterpolationType(Enum):
     LINEAR = 1
     RBF_LINEAR = 2
     LINEAR_REGRESSION = 3
     LOGISTIC_REGRESSION = 4
+    JOYSTICK = 5
 
 def unpackEyeCoords(eyeCoords: list[list[tuple]]) -> list[tuple]:
     # unpacks [[(1,2),(3,4)], [(5,6), (7,8)]] to [(1,2,3,4), (5,6,7,8)]
@@ -29,6 +33,7 @@ def toCalibrationDataframes(eyeCoords: list[list[tuple]], screenCoords: list[tup
     X = df3.iloc[:, 0:4]
     Y = df3.iloc[:, -2:]
     return X,Y
+
 class LinearRegressionInterpolator():
     def __init__(self, eyeCoords: list[list[tuple]], screenCoords: list[tuple]):
         df_X, df_Y = toCalibrationDataframes(eyeCoords, screenCoords)
@@ -56,6 +61,56 @@ class LinearInterpolator():
     def computeScreenCoords(self, eyeCoords):
         return (self.xInterpolator(eyeCoords), self.yInterpolator(eyeCoords))
 
+class JoystickInterpolator():
+    def __init__(self, calibrationData):
+        leftEyeXData = []
+        leftEyeYData = []
+        rightEyeXData = []
+        rightEyeYData = []
+
+        screenXData = []
+        screenYData = []
+
+        for ([(leftEyeX, leftEyeY), (rightEyeX, rightEyeY)], (screenX, screenY)) in calibrationData:
+            if leftEyeX and leftEyeY and rightEyeX and rightEyeY and screenX and screenY:
+                leftEyeXData.append(leftEyeX)
+                leftEyeYData.append(leftEyeY)
+                rightEyeXData.append(rightEyeX)
+                rightEyeYData.append(rightEyeY)
+                screenXData.append(screenX)
+                screenYData.append(screenY)
+
+        self.leftYMin = mean(sorted(leftEyeYData)[:3])
+        self.rightYMin = mean(sorted(rightEyeYData)[:3])
+
+        self.leftXMin = mean(sorted(leftEyeXData)[:3])
+        self.rightXMin = mean(sorted(rightEyeXData)[:3])
+
+        self.leftYMax = mean(sorted(leftEyeYData)[-3:])
+        self.rightYMax = mean(sorted(rightEyeYData)[-3:])
+
+        self.leftXMax = mean(sorted(leftEyeXData)[-3:])
+        self.rightXMax = mean(sorted(rightEyeXData)[-3:])
+
+        self.screenXMax = mean(sorted(screenXData)[-3:])
+        self.screenYMax = mean(sorted(screenYData)[-3:])
+
+    def computeScreenCoords(self, eyeCoords):
+        leftEyeX, leftEyeY = eyeCoords[0]
+        rightEyeX, rightEyeY = eyeCoords[1]
+
+        if leftEyeX < self.leftXMin and rightEyeX < self.rightXMin:
+            return (0, self.screenYMax / 2)
+        elif leftEyeX > self.leftXMax and rightEyeX > self.rightXMax:
+            return self.screenXMax, self.screenYMax / 2
+
+        if leftEyeY < self.leftYMin and rightEyeY < self.rightYMin:
+            return self.screenXMax / 2, 0
+        elif leftEyeY > self.leftYMax and rightEyeY > self.rightYMax:
+            return self.screenXMax / 2, self.screenYMax
+
+    # what if both at same time? Make nested
+
 class Interpolator():
     def __init__(self):
         self.interpolator = None
@@ -71,16 +126,17 @@ class Interpolator():
             self.interpolator = LinearRegressionInterpolator(eyeCoords, screenCoords)
         elif interpType == InterpolationType.LOGISTIC_REGRESSION:
             self.interpolator = LinearRegressionInterpolator(eyeCoords, screenCoords)
-        return
+        elif interpType == InterpolationType.JOYSTICK:
+            self.interpolator = JoystickInterpolator(zip(eyeCoords, screenCoords))
+
+
     def calibrateInterpolator(self, calibration_file = CALIBRATION_FILE_NAME, interpType = InterpolationType.LINEAR_REGRESSION):
         if not os.path.exists(calibration_file):
             raise ValueError('Error when calibrating interpolator')
 
         with open(calibration_file, 'rb') as calibration_data:
             calibrationData = pickle.load(calibration_data)
-        self.calibrateInterpolatorManual(calibrationData['eyeCoords'], calibrationData['calibrationCircleLocations'], interpType)
-
-
+            self.calibrateInterpolatorManual(calibrationData['eyeCoords'], calibrationData['calibrationCircleLocations'], interpType)
     
     def computeScreenCoords(self, eyeCoords: list[tuple]) -> tuple:
         # eyeCoords of shape [x1,y1,x2,y2]
@@ -89,3 +145,32 @@ class Interpolator():
         if self.interpolator is None:
             raise ValueError('Error calibrating interpolator.')
         return self.interpolator.computeScreenCoords(eyeCoords)
+
+if __name__ == '__main__':
+    leftEyeXData = []
+    leftEyeYData = []
+    rightEyeXData = []
+    rightEyeYData = []
+
+    screenXData = []
+    screenYData = []
+    
+    with open(CALIBRATION_FILE_NAME, 'rb') as calibration_data:
+        calibrationData = pickle.load(calibration_data)       
+            
+        for val in zip(calibrationData['eyeCoords'], calibrationData['calibrationCircleLocations']):
+            ([(leftEyeX, leftEyeY), (rightEyeX, rightEyeY)], (screenX, screenY)) = val
+            print(val)
+            if leftEyeX and leftEyeY and rightEyeX and rightEyeY and screenX and screenY:
+                leftEyeXData.append(leftEyeX)
+                leftEyeYData.append(leftEyeY)
+                rightEyeXData.append(rightEyeX)
+                rightEyeYData.append(rightEyeY)
+                screenXData.append(screenX)
+                screenYData.append(screenY)
+
+    plt.scatter(rightEyeYData, screenYData)
+    plt.title('Eye coordinate vs Screen coordinate')
+    plt.xlabel('Eye Y coordinate')
+    plt.ylabel('Screen Y coordinate')
+    plt.show()

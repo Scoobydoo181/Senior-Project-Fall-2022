@@ -7,7 +7,7 @@ import cv2
 from numpy import ndarray
 import pyautogui
 from detectEyes import EyeDetection
-from computeScreenCoords import Interpolator
+from computeScreenCoords import Interpolator, InterpolationType
 from ui import UI, CALIBRATION_FILE_NAME
 from camera import Camera
 
@@ -22,7 +22,7 @@ class IrisSoftware:
             self.shouldExit = False
             self.isCalibrated = False
             self.calibrationEyeCoords: list[list[tuple]] = []
-            self.lastCursorPos = None
+            self.lastCursorPos = pyautogui.position()
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
@@ -44,31 +44,29 @@ class IrisSoftware:
         # Load calibration data
         if os.path.exists(CALIBRATION_FILE_NAME):
             self.state.isCalibrated = True
-            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME)
+            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, InterpolationType.JOYSTICK)
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
 
     def moveMouse(self, screenX, screenY):
         '''Move the mouse to the given screen coordinates, moving smoothly over multiple frames'''
-        if self.state.lastCursorPos is None:
-            pyautogui.moveTo(screenX, screenY)
-            self.state.lastCursorPos = (screenX, screenY)
-        else:
-            # Smooth out the mouse movement to minimize jitter
-            x = self.state.lastCursorPos[0] + (screenX - self.state.lastCursorPos[0]) * 0.1
-            y = self.state.lastCursorPos[1] + (screenY - self.state.lastCursorPos[1]) * 0.1
+        # Smooth out the mouse movement to minimize jitter
+        smoothingFactor = 0.1
 
+        x = self.state.lastCursorPos[0] + ((screenX - self.state.lastCursorPos[0]) * smoothingFactor)
+        y = self.state.lastCursorPos[1] + ((screenY - self.state.lastCursorPos[1]) * smoothingFactor)
+
+        if x != self.state.lastCursorPos[0] or y != self.state.lastCursorPos[1]:
+            print("Moving mouse from", pyautogui.position(), " to: ", (x, y))
             pyautogui.moveTo(x, y)
             self.state.lastCursorPos = (x, y)
 
     def safeComputeCoords(self, eyeCoords):
         # return last cursor position if available when eyes aren't properly detected, if not return center screen 
         if len(eyeCoords) < 2:
-            if self.state.lastCursorPos is not None:
-                return self.state.lastCursorPos
-            res = list(self.camera.getResolution())
-            return tuple([resolution //2 for resolution in res])
+                print("Both eyes not visible, returning to las pos: ", self.state.lastCursorPos)
+                return pyautogui.position()
         
         return self.interpolator.computeScreenCoords(eyeCoords)
 
@@ -136,7 +134,7 @@ class IrisSoftware:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            # self.moveMouse(screenX, screenY)
+            self.moveMouse(screenX, screenY)
             
         # Release the camera before exiting
         self.camera.release()
