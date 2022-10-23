@@ -9,7 +9,7 @@ from detectEyes import EyeDetection
 from computeScreenCoords import Interpolator
 from ui import UI, CALIBRATION_FILE_NAME, PupilModelOptions
 from camera import Camera
-from settings import loadSettings, saveSettings
+from settings import loadSettings, saveSettings, SETTINGS_FILE_NAME
 
 
 class IrisSoftware:
@@ -104,6 +104,36 @@ class IrisSoftware:
         self.state.calibrationEyeCoords = []
         print("Reset current calibration eye coords.")
 
+    def performInitialConfiguration(self):
+        """Adjusts the eye color threshold until it detects pupils."""
+        detectedPupils = False
+        framesToCapture = 10
+
+        for i in range(1, 11):
+            self.changeEyeColorThreshold(i)
+
+            currDetectedEyeCoords = []
+
+            # Capture multiple frames to improve accuracy
+            for _ in range(framesToCapture):
+                frame = self.camera.getFrame()
+                eyeCoords = self.eyeDetector.detectEyes(frame)
+                if eyeCoords:
+                    currDetectedEyeCoords.append(eyeCoords)
+
+            # Ensure that eyeCoords are found in each frame
+            if len(currDetectedEyeCoords) >= framesToCapture:
+                print(currDetectedEyeCoords)
+                print(f"Initial configuration eye threshold: {i}")
+                detectedPupils = True
+                break
+
+        if not detectedPupils:
+            os.remove(SETTINGS_FILE_NAME)
+            raise Exception(
+                "Failed to detect any pupil data during initial configuration."
+            )
+
     def captureCalibrationEyeCoords(self):
         """Captures and stores a eye coords for calibration."""
         frame = self.camera.getFrame()
@@ -172,6 +202,10 @@ class IrisSoftware:
     def run(self) -> None:
         """Launch threads and start program"""
         print("Starting Iris Software...")
+        # Handle initial settings
+        if not os.path.exists(SETTINGS_FILE_NAME):
+            print("Performing initial configuration...")
+            self.performInitialConfiguration()
         # Handle initial calibration
         if not self.state.isCalibrated:
             print("Calibrating program...")
