@@ -7,11 +7,13 @@ import os
 import pickle
 import math
 from ui import CALIBRATION_FILE_NAME
+
 class InterpolationType(Enum):
     LINEAR = 1
     RBF_LINEAR = 2
     LINEAR_REGRESSION = 3
     LOGISTIC_REGRESSION = 4
+    TANGENT_LINEAR_REGRESSION = 5
 
 def unpackEyeCoords(eyeCoords: list[list[tuple]]) -> list[tuple]:
     # unpacks [[(1,2),(3,4)], [(5,6), (7,8)]] to [(1,2,3,4), (5,6,7,8)]
@@ -71,9 +73,11 @@ class Interpolator():
         elif interpType == InterpolationType.LINEAR_REGRESSION:
             self.interpolator = LinearRegressionInterpolator(eyeCoords, screenCoords)
         elif interpType == InterpolationType.LOGISTIC_REGRESSION:
-            self.interpolator = LinearRegressionInterpolator(eyeCoords, screenCoords)
+            self.interpolator = LogisticRegressionInterpolator(eyeCoords, screenCoords)
+        elif interpType == InterpolationType.TANGENT_LINEAR_REGRESSION:
+            self.interpolator = TangentLinearRegressionInterpolator(eyeCoords, screenCoords)
         return
-    def calibrateInterpolator(self, calibration_file = CALIBRATION_FILE_NAME, interpType = InterpolationType.LINEAR_REGRESSION):
+    def calibrateInterpolator(self, calibration_file = CALIBRATION_FILE_NAME, interpType = InterpolationType.TANGENT_LINEAR_REGRESSION):
         if not os.path.exists(calibration_file):
             raise ValueError('Error when calibrating interpolator')
 
@@ -94,10 +98,7 @@ class Interpolator():
 class TangentLinearRegressionInterpolator():
     def __init__(self, eyeCoords: list[list[tuple]], screenCoords: list[tuple]):
         df_X, df_Y = toCalibrationDataframes(eyeCoords, screenCoords)
-        # X_coords = pd.concat([df_X.iloc[:, 0], df_X.iloc[:,2]])
-        # Y_coords = pd.concat([df_X.iloc[:,1], df_X.iloc[:, 3]])
-        # df_screen_x = pd.concat([df_Y.iloc[:,0], df_Y.iloc[:,0]])
-        # df_screen_y = pd.concat([df_Y.iloc[:,1],df_Y.iloc[:,1]])
+  
         X_pupil_left = df_X.iloc[:,0]
         X_pupil_right = df_X.iloc[:,2]
         Y_pupil_left = df_X.iloc[:,1]
@@ -105,15 +106,43 @@ class TangentLinearRegressionInterpolator():
         X_screen_coords = df_Y.iloc[:,0]
         Y_screen_coords = df_Y.iloc[:,1]
         # small angle approx --> tan(theta) ≈ theta. In our case, theta is distance offset in camera frame for each pupil
-        x_pupil_left_theta = X_pupil_left - X_pupil_left.iat[4]
-        x_pupil_right_theta = X_pupil_right - X_pupil_right.iat[4]
+        X_pupil_left_theta = X_pupil_left - X_pupil_left.iat[4]
+        X_pupil_right_theta = X_pupil_right - X_pupil_right.iat[4]
         X_screen_coords_diff = X_screen_coords - X_screen_coords.iat[4]
+        X_screen_coords_diff = pd.concat([X_screen_coords_diff, X_screen_coords_diff]).values.reshape(-1,1)
+        X_pupil_theta = pd.concat([X_pupil_left_theta, X_pupil_right_theta]).values.reshape(-1,1)
+
+        Y_pupil_left_theta = Y_pupil_left - Y_pupil_left.iat[4]
+        Y_pupil_right_theta = Y_pupil_right - Y_pupil_right.iat[4]
+        Y_screen_coords_diff = Y_screen_coords - Y_screen_coords.iat[4]
+        Y_screen_coords_diff = pd.concat([Y_screen_coords_diff, Y_screen_coords_diff]).values.reshape(-1,1)
+        Y_pupil_theta = pd.concat([Y_pupil_left_theta, Y_pupil_right_theta]).values.reshape(-1,1)
         # distance to screen *  tan(theta) = screen offset (distance from center per calibration point)
-        # 
-        self.model = LinearRegression()
-        self.model.fit(df_X, df_Y)
+        X_dist_model = LinearRegression()
+        X_dist_model.fit(X_pupil_theta, X_screen_coords_diff)
+        Y_dist_model = LinearRegression()
+        Y_dist_model.fit(Y_pupil_theta, Y_screen_coords_diff)
+        # take average of calculated distances per pupil tangent
+        self.x_dist = X_dist_model.coef_[0][0]
+        self.y_dist = Y_dist_model.coef_[0][0]
+        self.avg_dist = np.average([X_dist_model.coef_, Y_dist_model.coef_])
+
+        self.x_pupil_left_center = X_pupil_left.iat[4]
+        self.x_pupil_right_center = X_pupil_right.iat[4]
+        self.y_pupil_left_center = Y_pupil_left.iat[4]
+        self.y_pupil_right_center = Y_pupil_right.iat[4]
+
+        self.x_center_screen = X_screen_coords.iat[4]
+        self.y_center_screen = Y_screen_coords.iat[4]
+
     def computeScreenCoords(self, eyeCoords):
-        df_X = pd.DataFrame(sum(eyeCoords, ()))
-        prediction = self.model.predict(df_X.T)
-        return prediction[-1]
+        # x_screen = dist_to_screen * tan(x_camera - x_camera_center) + x_screen_center
+        x_tan = math.avg(math.tan(eyeCoords[0][0] - self.x_pupil_left_center), math.tan(eyeCoords[1][0] - self.x_pupil_right_center))
+        x_prediction = (self.x_dist * x_tan) + self.x_center_screen
+
+        y_tan = math.avg(math.tan(eyeCoords[0][1] - self.y_pupil_left_center), math.tan(eyeCoords[1][1] - self.y_pupil_right_center))
+        y_prediction = (self.y_dist * y_tan) + self.y_center_screen
+        # prediction = self.model.predict(df_X.T)
+        return(x_prediction, y_prediction)
+        # return prediction[-1]
 
