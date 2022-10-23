@@ -5,6 +5,7 @@ import pandas as pd
 from scipy.interpolate import LinearNDInterpolator
 import os
 import pickle
+import math
 from ui import CALIBRATION_FILE_NAME
 class InterpolationType(Enum):
     LINEAR = 1
@@ -24,7 +25,7 @@ def toCalibrationDataframes(eyeCoords: list[list[tuple]], screenCoords: list[tup
     unpackedEyes = unpackEyeCoords(eyeCoords)
     df1 =pd.DataFrame(unpackedEyes)
     df2 =pd.DataFrame(screenCoords)
-    df3 = pd.concat([df1,df2])
+    df3 = pd.concat([df1,df2], axis =1)
     df3.dropna(inplace=True)
     X = df3.iloc[:, 0:4]
     Y = df3.iloc[:, -2:]
@@ -89,3 +90,30 @@ class Interpolator():
         if self.interpolator is None:
             raise ValueError('Error calibrating interpolator.')
         return self.interpolator.computeScreenCoords(eyeCoords)
+
+class TangentLinearRegressionInterpolator():
+    def __init__(self, eyeCoords: list[list[tuple]], screenCoords: list[tuple]):
+        df_X, df_Y = toCalibrationDataframes(eyeCoords, screenCoords)
+        # X_coords = pd.concat([df_X.iloc[:, 0], df_X.iloc[:,2]])
+        # Y_coords = pd.concat([df_X.iloc[:,1], df_X.iloc[:, 3]])
+        # df_screen_x = pd.concat([df_Y.iloc[:,0], df_Y.iloc[:,0]])
+        # df_screen_y = pd.concat([df_Y.iloc[:,1],df_Y.iloc[:,1]])
+        X_pupil_left = df_X.iloc[:,0]
+        X_pupil_right = df_X.iloc[:,2]
+        Y_pupil_left = df_X.iloc[:,1]
+        Y_pupil_right = df_X.iloc[:,3]
+        X_screen_coords = df_Y.iloc[:,0]
+        Y_screen_coords = df_Y.iloc[:,1]
+        # small angle approx --> tan(theta) ≈ theta. In our case, theta is distance offset in camera frame for each pupil
+        x_pupil_left_theta = X_pupil_left - X_pupil_left.iat[4]
+        x_pupil_right_theta = X_pupil_right - X_pupil_right.iat[4]
+        X_screen_coords_diff = X_screen_coords - X_screen_coords.iat[4]
+        # distance to screen *  tan(theta) = screen offset (distance from center per calibration point)
+        # 
+        self.model = LinearRegression()
+        self.model.fit(df_X, df_Y)
+    def computeScreenCoords(self, eyeCoords):
+        df_X = pd.DataFrame(sum(eyeCoords, ()))
+        prediction = self.model.predict(df_X.T)
+        return prediction[-1]
+
