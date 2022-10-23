@@ -23,6 +23,7 @@ class IrisSoftware:
             self.isCalibrated = False
             self.calibrationEyeCoords: list[list[tuple]] = []
             self.lastCursorPos = pyautogui.position()
+            self.skipMouseMovement = False
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
@@ -57,20 +58,24 @@ class IrisSoftware:
         x = self.state.lastCursorPos[0] + ((screenX - self.state.lastCursorPos[0]) * smoothingFactor)
         y = self.state.lastCursorPos[1] + ((screenY - self.state.lastCursorPos[1]) * smoothingFactor)
 
-        if x != self.state.lastCursorPos[0] or y != self.state.lastCursorPos[1]:
-            print("Moving mouse from", pyautogui.position(), " to: ", (x, y))
+        if not self.state.skipMouseMovement:
+            print("Moving mouse from", pyautogui.position(), " to: ", (x, y), "goal coords: ", (screenX, screenY))
             pyautogui.moveTo(x, y)
             self.state.lastCursorPos = (x, y)
 
     def safeComputeCoords(self, eyeCoords):
         # return last cursor position if available when eyes aren't properly detected, if not return center screen 
         if len(eyeCoords) < 2:
-                print("Both eyes not visible, returning to las pos: ", self.state.lastCursorPos)
-                return pyautogui.position()
+                self.state.skipMouseMovement = True
+                return self.state.lastCursorPos
         
         newCoords = self.interpolator.computeScreenCoords(eyeCoords)
 
-        return newCoords if newCoords is not None else self.state.lastCursorPos
+        if newCoords is not None: 
+            return newCoords 
+        else: 
+            self.state.skipMouseMovement = True
+            return self.state.lastCursorPos
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
@@ -136,7 +141,8 @@ class IrisSoftware:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            self.moveMouse(screenX, screenY)
+            # self.moveMouse(screenX, screenY)
+            self.state.skipMouseMovement = False
             
         # Release the camera before exiting
         self.camera.release()

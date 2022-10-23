@@ -100,13 +100,17 @@ class JoystickInterpolator():
         rightEyeX, rightEyeY = eyeCoords[1]
 
         if leftEyeX < self.leftXMin and rightEyeX < self.rightXMin:
-            return (0, self.screenYMax / 2)
-        elif leftEyeX > self.leftXMax and rightEyeX > self.rightXMax:
+            print('Moving right')
             return self.screenXMax, self.screenYMax / 2
+        elif leftEyeX > self.leftXMax and rightEyeX > self.rightXMax:
+            print('Moving left')
+            return (0, self.screenYMax / 2)
 
         if leftEyeY < self.leftYMin and rightEyeY < self.rightYMin:
+            print('Moving up')
             return self.screenXMax / 2, 0
         elif leftEyeY > self.leftYMax and rightEyeY > self.rightYMax:
+            print('Moving down')
             return self.screenXMax / 2, self.screenYMax
 
     # what if both at same time? Make nested
