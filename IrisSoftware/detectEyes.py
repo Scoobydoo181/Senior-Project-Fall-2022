@@ -31,9 +31,9 @@ def getPupils(pupils, eyes, cropHeights):
 
     return [tupleAdd(pupil[0].pt, x, y+cropHeight) for pupil, (x, y, w, h), cropHeight in zip(pupils, eyes, cropHeights) if len(pupil) > 0]
 
-def preprocessEyeImage(image):
+def preprocessEyeImage(image, numIterations=7):
     '''Preprocess a cropped black and white eye image to make it easier to detect the pupil'''
-    for _ in range(7):
+    for _ in range(numIterations):
         cv2.medianBlur(image, 5, image)
     
     return image
@@ -59,6 +59,7 @@ class EyeDetection:
         self.detectionType = EyeDetection.DetectionType.FACE_EYE_CASCADE_BLOB
 
         self.blobThreshold = 45
+        self.numBlurIterations = 7
 
     def setDetectionType(self, detectionType):
         '''Set the detection type to the specified enum value'''
@@ -77,6 +78,13 @@ class EyeDetection:
         and users with ligher eye colors should user a higher threshold 
         to make sure the iris is captured in the blob detector'''
         self.blobThreshold = threshold
+
+    def setNumBlurIterations(self, numIterations):
+        '''Set the number of iterations to run the median blur filter on the image 
+        before running the blob detector. 
+        
+        Increasing this value will reduce the amount of noise in the detection image, and enlarge the pupil area.'''
+        self.numBlurIterations = numIterations
 
     @filterFalsePositives
     def detectEyes(self, image):
@@ -113,7 +121,7 @@ class EyeDetection:
         cropHeights = [eye.shape[0]//4 for eye in eyes_bw]
         eyes_bw = [eye[eye.shape[0]//4:, :] for eye in eyes_bw]
 
-        eyes_processed = [preprocessEyeImage(eye) for eye in eyes_bw]
+        eyes_processed = [preprocessEyeImage(eye, self.numBlurIterations) for eye in eyes_bw]
 
         pupils = [self.blobDetector.detect(eye) for eye in eyes_processed]
 
@@ -186,7 +194,7 @@ class EyeDetection:
                 cv2.imshow(f"Cropped Eyebrows {i}", eye)
             cv2.waitKey()
 
-        eyes_processed = [preprocessEyeImage(eye) for eye in eyes_bw]
+        eyes_processed = [preprocessEyeImage(eye, self.numBlurIterations) for eye in eyes_bw]
         if demo:
             for i, eye in enumerate(eyes_processed):
                 cv2.imshow(f"Processed {i}", eye)
