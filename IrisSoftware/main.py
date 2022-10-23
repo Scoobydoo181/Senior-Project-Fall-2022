@@ -24,6 +24,7 @@ class IrisSoftware:
             self.calibrationEyeCoords: list[list[tuple]] = []
             self.lastCursorPos = pyautogui.position()
             self.skipMouseMovement = False
+            self.interpolatorType = InterpolationType.LINEAR_REGRESSION #InterpolationType.JOYSTICK
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
@@ -45,7 +46,7 @@ class IrisSoftware:
         # Load calibration data
         if os.path.exists(CALIBRATION_FILE_NAME):
             self.state.isCalibrated = True
-            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, InterpolationType.JOYSTICK)
+            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, self.state.interpolatorType)
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
@@ -59,7 +60,7 @@ class IrisSoftware:
         y = self.state.lastCursorPos[1] + ((screenY - self.state.lastCursorPos[1]) * smoothingFactor)
 
         if not self.state.skipMouseMovement:
-            print("Moving mouse from", pyautogui.position(), " to: ", (x, y), "goal coords: ", (screenX, screenY))
+            # print("Moving mouse from", pyautogui.position(), " to: ", (x, y), "goal coords: ", (screenX, screenY))
             pyautogui.moveTo(x, y)
             self.state.lastCursorPos = (x, y)
 
