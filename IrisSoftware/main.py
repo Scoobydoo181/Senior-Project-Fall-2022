@@ -44,7 +44,7 @@ class IrisSoftware:
         # Load calibration data
         if os.path.exists(CALIBRATION_FILE_NAME):
             self.state.isCalibrated = True
-            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME)#, InterpolationType.JOYSTICK)
+            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, InterpolationType.JOYSTICK)
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
@@ -68,7 +68,9 @@ class IrisSoftware:
                 print("Both eyes not visible, returning to las pos: ", self.state.lastCursorPos)
                 return pyautogui.position()
         
-        return self.interpolator.computeScreenCoords(eyeCoords)
+        newCoords = self.interpolator.computeScreenCoords(eyeCoords)
+
+        return newCoords if newCoords is not None else self.state.lastCursorPos
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
@@ -134,7 +136,7 @@ class IrisSoftware:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            # self.moveMouse(screenX, screenY)
+            self.moveMouse(screenX, screenY)
             
         # Release the camera before exiting
         self.camera.release()
