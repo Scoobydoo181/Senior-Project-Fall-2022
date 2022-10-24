@@ -6,7 +6,7 @@ import threading
 import cv2
 import pyautogui
 from detectEyes import EyeDetection
-from computeScreenCoords import Interpolator
+from computeScreenCoords import Interpolator, InterpolationType
 from ui import UI, CALIBRATION_FILE_NAME, PupilModelOptions
 from camera import Camera
 from settings import loadSettings, saveSettings, SETTINGS_FILE_NAME
@@ -22,7 +22,9 @@ class IrisSoftware:
             self.shouldExit = False
             self.isCalibrated = False
             self.calibrationEyeCoords: list[list[tuple]] = []
-            self.lastCursorPos = None
+            self.lastCursorPos = pyautogui.position()
+            self.skipMouseMovement = False
+            self.interpolatorType = InterpolationType.LINEAR_REGRESSION #InterpolationType.JOYSTICK
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
@@ -47,39 +49,37 @@ class IrisSoftware:
         # Load calibration data
         if os.path.exists(CALIBRATION_FILE_NAME):
             self.state.isCalibrated = True
-            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME)
+            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, self.state.interpolatorType)
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
 
     def moveMouse(self, screenX, screenY):
-        """Move the mouse to the given screen coordinates, moving smoothly over multiple frames"""
-        if self.state.lastCursorPos is None:
-            pyautogui.moveTo(screenX, screenY)
-            self.state.lastCursorPos = (screenX, screenY)
-        else:
-            # Smooth out the mouse movement to minimize jitter
-            x = (
-                self.state.lastCursorPos[0]
-                + (screenX - self.state.lastCursorPos[0]) * 0.1
-            )
-            y = (
-                self.state.lastCursorPos[1]
-                + (screenY - self.state.lastCursorPos[1]) * 0.1
-            )
+        '''Move the mouse to the given screen coordinates, moving smoothly over multiple frames'''
+        # Smooth out the mouse movement to minimize jitter
+        smoothingFactor = 0.1
 
+        x = self.state.lastCursorPos[0] + ((screenX - self.state.lastCursorPos[0]) * smoothingFactor)
+        y = self.state.lastCursorPos[1] + ((screenY - self.state.lastCursorPos[1]) * smoothingFactor)
+
+        if not self.state.skipMouseMovement:
+            # print("Moving mouse from", pyautogui.position(), " to: ", (x, y), "goal coords: ", (screenX, screenY))
             pyautogui.moveTo(x, y)
             self.state.lastCursorPos = (x, y)
 
     def safeComputeCoords(self, eyeCoords):
         # return last cursor position if available when eyes aren't properly detected, if not return center screen
         if len(eyeCoords) < 2:
-            if self.state.lastCursorPos is not None:
+                self.state.skipMouseMovement = True
                 return self.state.lastCursorPos
-            res = list(self.camera.getResolution())
-            return tuple([resolution // 2 for resolution in res])
+        
+        newCoords = self.interpolator.computeScreenCoords(eyeCoords)
 
-        return self.interpolator.computeScreenCoords(eyeCoords)
+        if newCoords is not None: 
+            return newCoords 
+        else: 
+            self.state.skipMouseMovement = True
+            return self.state.lastCursorPos
 
     def changeEyeColorThreshold(self, value: int):
         """Take a value from 1-10 and scale it up."""
@@ -204,7 +204,8 @@ class IrisSoftware:
 
             # # Move the mouse based on the eye coordinates
             # self.moveMouse(screenX, screenY)
-
+            self.state.skipMouseMovement = False
+            
         # Release the camera before exiting
         self.camera.release()
 
