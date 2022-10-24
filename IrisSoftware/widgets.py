@@ -194,7 +194,6 @@ class CalibrationWindow(Window):
         self.circles[self.activeCircleIndex].setHidden()
         # Check if calibration is complete
         if self.activeCircleIndex >= len(self.circles) - 1:
-            print(self.getCircleLocations())
             self.completeSignal.emit()
         # Otherwise, continue through calibration
         else:
