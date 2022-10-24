@@ -4,12 +4,12 @@ import pickle
 import sys
 import threading
 import cv2
-from numpy import ndarray
 import pyautogui
 from detectEyes import EyeDetection
-from computeScreenCoords import Interpolator
-from ui import UI, CALIBRATION_FILE_NAME
+from computeScreenCoords import Interpolator, InterpolationType
+from ui import UI, CALIBRATION_FILE_NAME, PupilModelOptions
 from camera import Camera
+from settings import loadSettings, saveSettings, SETTINGS_FILE_NAME
 
 
 class IrisSoftware:
@@ -22,10 +22,13 @@ class IrisSoftware:
             self.shouldExit = False
             self.isCalibrated = False
             self.calibrationEyeCoords: list[list[tuple]] = []
-            self.lastCursorPos = None
+            self.lastCursorPos = pyautogui.position()
+            self.skipMouseMovement = False
+            self.interpolatorType = InterpolationType.LINEAR_REGRESSION #InterpolationType.JOYSTICK
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
+        self.settings = loadSettings()
         self.state = IrisSoftware.State()
 
         self.eyeDetector = EyeDetection()
@@ -36,6 +39,8 @@ class IrisSoftware:
         self.ui.onCalibrationComplete = self.saveCalibrationData
         self.ui.onCaptureCalibrationEyeCoords = self.captureCalibrationEyeCoords
         self.ui.onCalibrationCancel = self.resetCalibrationEyeCoords
+        self.ui.onChangePupilModel = self.changePupilModel
+        self.ui.onChangeEyeColorThreshold = self.changeEyeColorThreshold
 
         self.processingThread: threading.Thread
 
@@ -44,46 +49,108 @@ class IrisSoftware:
         # Load calibration data
         if os.path.exists(CALIBRATION_FILE_NAME):
             self.state.isCalibrated = True
-            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME)
+            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, self.state.interpolatorType)
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
 
     def moveMouse(self, screenX, screenY):
         '''Move the mouse to the given screen coordinates, moving smoothly over multiple frames'''
-        if self.state.lastCursorPos is None:
-            pyautogui.moveTo(screenX, screenY)
-            self.state.lastCursorPos = (screenX, screenY)
-        else:
-            # Smooth out the mouse movement to minimize jitter
-            x = self.state.lastCursorPos[0] + (screenX - self.state.lastCursorPos[0]) * 0.1
-            y = self.state.lastCursorPos[1] + (screenY - self.state.lastCursorPos[1]) * 0.1
+        # Smooth out the mouse movement to minimize jitter
+        smoothingFactor = 0.1
 
+        x = self.state.lastCursorPos[0] + ((screenX - self.state.lastCursorPos[0]) * smoothingFactor)
+        y = self.state.lastCursorPos[1] + ((screenY - self.state.lastCursorPos[1]) * smoothingFactor)
+
+        if not self.state.skipMouseMovement:
+            # print("Moving mouse from", pyautogui.position(), " to: ", (x, y), "goal coords: ", (screenX, screenY))
             pyautogui.moveTo(x, y)
             self.state.lastCursorPos = (x, y)
 
     def safeComputeCoords(self, eyeCoords):
-        # return last cursor position if available when eyes aren't properly detected, if not return center screen 
+        # return last cursor position if available when eyes aren't properly detected, if not return center screen
         if len(eyeCoords) < 2:
-            if self.state.lastCursorPos is not None:
+                self.state.skipMouseMovement = True
                 return self.state.lastCursorPos
-            res = list(self.camera.getResolution())
-            return tuple([resolution //2 for resolution in res])
         
-        return self.interpolator.computeScreenCoords(eyeCoords)
+        newCoords = self.interpolator.computeScreenCoords(eyeCoords)
+
+        if newCoords is not None: 
+            return newCoords 
+        else: 
+            self.state.skipMouseMovement = True
+            return self.state.lastCursorPos
+
+    def changeEyeColorThreshold(self, value: int):
+        """Take a value from 1-10 and scale it up."""
+        self.settings.eyeColorThreshold = value
+        transformedValue = 45 + 5 * (value - 1)
+        self.eyeDetector.setBlobThreshold(transformedValue)
+        saveSettings(self.settings)
+
+    def changePupilModel(self, value: PupilModelOptions):
+        self.settings.pupilDetectionModel = value
+        if value == PupilModelOptions.ACCURACY:
+            self.eyeDetector.setDetectionType(
+                EyeDetection.DetectionType.FACE_EYE_CASCADE_BLOB
+            )
+        elif value == PupilModelOptions.SPEED:
+            self.eyeDetector.setDetectionType(
+                EyeDetection.DetectionType.EYE_CASCADE_BLOB
+            )
+        saveSettings(self.settings)
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
         print("Reset current calibration eye coords.")
 
+    def performInitialConfiguration(self):
+        """Adjusts the eye color threshold until it detects pupils."""
+        detectedPupils = False
+        framesToCapture = 10
+
+        for i in range(1, 21):
+            self.changeEyeColorThreshold(i)
+
+            currDetectedEyeCoords = []
+
+            # Capture multiple frames to improve accuracy
+            for _ in range(framesToCapture):
+                frame = self.camera.getFrame()
+                eyeCoords = self.eyeDetector.detectEyes(frame)
+                if len(eyeCoords) >= 2:
+                    currDetectedEyeCoords.append(eyeCoords)
+
+            # Ensure that eyeCoords are found in each frame
+            if len(currDetectedEyeCoords) >= int(framesToCapture * 0.8):
+                print(f"Initial configuration eye threshold: {i + 1}")
+                self.changeEyeColorThreshold(i + 1)
+                detectedPupils = True
+                break
+
+        if not detectedPupils:
+            os.remove(SETTINGS_FILE_NAME)
+            raise Exception(
+                "Failed to detect any pupil data during initial configuration."
+            )
+
     def captureCalibrationEyeCoords(self):
         """Captures and stores a eye coords for calibration."""
-        frame = self.camera.getFrame()
-        eyeCoords = self.eyeDetector.detectEyes(frame)
+        eyeCoords = []
+        maxFramesToCapture = 30
+
+        for _ in range(maxFramesToCapture):
+            frame = self.camera.getFrame()
+            eyeCoords = self.eyeDetector.detectEyes(frame)
+            if len(eyeCoords) >= 2:
+                break
+
         if len(eyeCoords) < 2:
-            eyeCoords = [(None, None), (None,None)]
+            eyeCoords = [(None, None), (None, None)]
+
         self.state.calibrationEyeCoords.append(eyeCoords)
-        print("Captured calibration eye coords.")
+        print(f"Captured calibration eye coords: {eyeCoords}")
+        self.ui.emitFinishedCaptureEyeCoords()
 
     def saveCalibrationData(self):
         """Saves the current calibration data and trains the screen coords model."""
@@ -110,7 +177,7 @@ class IrisSoftware:
         # TODO: train screen coords model
 
     def processing(self):
-        '''Thread to run main loop of eye detection'''
+        """Thread to run main loop of eye detection"""
         while not self.state.shouldExit:
             # Get the camera frame
             frame = self.camera.getFrame()
@@ -137,13 +204,18 @@ class IrisSoftware:
 
             # # Move the mouse based on the eye coordinates
             # self.moveMouse(screenX, screenY)
+            self.state.skipMouseMovement = False
             
         # Release the camera before exiting
         self.camera.release()
 
     def run(self) -> None:
-        '''Launch threads and start program'''
+        """Launch threads and start program"""
         print("Starting Iris Software...")
+        # Handle initial settings
+        if not os.path.exists(SETTINGS_FILE_NAME):
+            print("Performing initial configuration...")
+            self.performInitialConfiguration()
         # Handle initial calibration
         if not self.state.isCalibrated:
             print("Calibrating program...")
