@@ -191,50 +191,27 @@ class CalibrationWindow(Window):
 
     @QtCore.Slot()
     def __progressCalibration(self):
+        self.circles[self.activeCircleIndex].setHidden()
         # Check if calibration is complete
         if self.activeCircleIndex >= len(self.circles) - 1:
+            print(self.getCircleLocations())
             self.completeSignal.emit()
         # Otherwise, continue through calibration
         else:
-            self.circles[self.activeCircleIndex].setParent(None)
             self.activeCircleIndex += 1
             self.circles[self.activeCircleIndex].toggleActive()
 
     def getCircleLocations(self):
-        # Get the screen geometry
-        screenGeometry = QApplication.primaryScreen().geometry()
-        # Get the locations
         locs = []
-        trueLeft = 0
-        trueMidX = screenGeometry.center().x() - DesignTokens.circleBaseSize / 2
-        trueMidY = screenGeometry.center().y() - DesignTokens.circleBaseSize / 2
-        trueRight = screenGeometry.right() - DesignTokens.circleBaseSize
-        trueTop = 0
-        trueBottom = (
-            screenGeometry.bottom() - DesignTokens.circleBaseSize - self.bottomOffset
-        )
-        # Top
-        locs.append((trueLeft, trueTop))
-        locs.append((trueMidX, trueTop))
-        locs.append((trueRight, trueTop))
-        # Middle
-        locs.append((trueLeft, trueMidY))
-        locs.append((trueMidX, trueMidY))
-        locs.append((trueRight, trueMidY))
-        # Bottom
-        locs.append((trueLeft, trueBottom))
-        locs.append((trueMidX, trueBottom))
-        locs.append((trueRight, trueBottom))
+
+        for c in self.circles:
+            locs.append(c.getPositionOnScreen())
 
         return locs
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         # If calibration has begun and the spacebar was pressed
         if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
-            self.circles[self.activeCircleIndex].setLoading()
-            print(
-                f"Location: {self.circles[self.activeCircleIndex].getPositionOnScreen()}"
-            )
             self.captureEyeCoordsSignal.emit()
         elif event.key() == QtCore.Qt.Key_Escape:
             # Exit on esc press
@@ -243,15 +220,27 @@ class CalibrationWindow(Window):
         return super().keyPressEvent(event)
 
     def __drawCircles(self):
-        # Create widget
+        gridSize = 5
         circlesWidget = QWidget()
-        # Get the circle locations
-        locs = self.getCircleLocations()
-        # Draw the circles
-        for loc in locs:
-            circle = CalibrationCircle(circlesWidget, loc)
-            self.circles.append(circle)
-        # Set as the central widget
+        verticalLayout = QVBoxLayout(circlesWidget)
+        verticalLayout.setContentsMargins(0, 0, 0, 0)
+
+        for i in range(gridSize):
+            # Create the horizontal layout
+            horizontalLayout = QHBoxLayout()
+            horizontalLayout.setContentsMargins(0, 0, 0, 0)
+            verticalLayout.addLayout(horizontalLayout)
+            if i < gridSize - 1:
+                verticalLayout.addStretch()
+
+            # Draw the circles
+            for j in range(gridSize):
+                circle = CalibrationCircle()
+                horizontalLayout.addWidget(circle)
+                self.circles.append(circle)
+                if j < gridSize - 1:
+                    horizontalLayout.addStretch()
+
         self.setCentralWidget(circlesWidget)
 
     def __setupUI(self):
@@ -296,12 +285,6 @@ class CalibrationWindow(Window):
     def __init__(self):
         super().__init__()
 
-        # Properties
-        self.bottomOffset = 0
-        # Adjust for mac OS offset
-        if sys.platform == "darwin":
-            self.bottomOffset = 35
-
         # Remove window title
         self.setWindowTitle("Iris Software - Calibration")
 
@@ -317,22 +300,25 @@ class CalibrationWindow(Window):
 class CalibrationCircle(QPushButton):
     """Circle with an active state and onClick handler."""
 
-    active = False
-
-    def getPositionOnScreen(self):
+    def getPositionOnScreen(self) -> tuple[int, int]:
         """Return the screen coordinates of the center of the circle."""
-        return self.mapToGlobal(
-            QtCore.QPoint(
-                DesignTokens.circleBaseSize / 2, DesignTokens.circleBaseSize / 2
-            )
+        centerOfCircle = QtCore.QPoint(
+            DesignTokens.circleBaseSize / 2, DesignTokens.circleBaseSize / 2
         )
+        posOnScreen = self.mapToGlobal(centerOfCircle)
+        return posOnScreen.toTuple()
 
     def toggleActive(self):
         self.active = not self.active
         self.__setStyle()
 
-    def setLoading(self):
-        self.setText("...")
+    def setHidden(self):
+        self.setStyleSheet(
+            f"""
+            background-color: {DesignTokens.windowBgColor};
+            border: none;
+            """
+        )
 
     def __setStyle(self):
         bgColor = (
@@ -346,16 +332,16 @@ class CalibrationCircle(QPushButton):
             f"""
             background-color: {bgColor};
             border-radius: {borderRadius};
+            border: none;
             """
         )
 
-    def __init__(self, parent: QWidget, loc: tuple[int]):
-        super().__init__("", parent)
+    def __init__(self):
+        super().__init__("")
 
-        # Set geometry
-        (x, y) = loc
-        self.setGeometry(x, y, DesignTokens.circleBaseSize, DesignTokens.circleBaseSize)
-        # Set style
+        self.active = False
+
+        self.setFixedSize(DesignTokens.circleBaseSize, DesignTokens.circleBaseSize)
         self.__setStyle()
 
 
