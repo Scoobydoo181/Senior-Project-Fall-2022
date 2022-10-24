@@ -22,9 +22,11 @@ class IrisSoftware:
             self.shouldExit = False
             self.isCalibrated = False
             self.calibrationEyeCoords: list[list[tuple]] = []
+            self.faceBoxes = []
+            self.faceBox = None
             self.lastCursorPos = pyautogui.position()
             self.skipMouseMovement = False
-            self.interpolatorType = InterpolationType.LINEAR_REGRESSION #InterpolationType.JOYSTICK
+            self.interpolatorType = InterpolationType.JOYSTICK # InterpolationType.LINEAR_REGRESSION
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
@@ -48,8 +50,11 @@ class IrisSoftware:
 
         # Load calibration data
         if os.path.exists(CALIBRATION_FILE_NAME):
-            self.state.isCalibrated = True
+            with open(CALIBRATION_FILE_NAME, "rb") as f:
+                self.state.faceBox = pickle.load(f)['faceBox']
+
             self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, self.state.interpolatorType)
+            self.state.isCalibrated = True
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
@@ -150,7 +155,30 @@ class IrisSoftware:
 
         self.state.calibrationEyeCoords.append(eyeCoords)
         print(f"Captured calibration eye coords: {eyeCoords}")
+        
+        faceBox = self.eyeDetector.detectFace(frame)
+        if faceBox is not None:
+            self.state.faceBoxes.append(faceBox)
+            
         self.ui.emitFinishedCaptureEyeCoords()
+
+    def averageFaceBox(self, faceBoxes):
+        """Averages the face box coordinates."""
+        if len(faceBoxes) == 0:
+            return None
+
+        x = 0
+        y = 0
+        w = 0
+        h = 0
+
+        for faceBox in faceBoxes:
+            x += faceBox[0]
+            y += faceBox[1]
+            w += faceBox[2]
+            h += faceBox[3]
+
+        return (round(x / len(faceBoxes)), round(y / len(faceBoxes)), round(w / len(faceBoxes)), round(h / len(faceBoxes)))
 
     def saveCalibrationData(self):
         """Saves the current calibration data and trains the screen coords model."""
@@ -163,7 +191,9 @@ class IrisSoftware:
         calibrationData = {
             "eyeCoords": self.state.calibrationEyeCoords,
             "calibrationCircleLocations": calibrationCircleLocations,
+            "faceBox": self.averageFaceBox(self.state.faceBoxes),
         }
+        self.state.faceBox = self.averageFaceBox(self.state.faceBoxes)
 
         # Store calibration data in pickle file
         with open(CALIBRATION_FILE_NAME, "wb") as handle:
@@ -188,6 +218,10 @@ class IrisSoftware:
             # Draw circles around the eyes
             for (x, y) in eyeCoords:
                 cv2.circle(frame, (x, y), 7, (0, 0, 255), 2)
+
+            # Draw the face box
+            faceX, faceY, faceW, faceH = self.state.faceBox
+            frame = cv2.rectangle(frame, (faceX, faceY), (faceX + faceW, faceY + faceH), (0, 0, 255), 2)
 
             # Pass the frame to the UI
             self.ui.emitCameraFrame(frame)
