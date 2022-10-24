@@ -1,7 +1,6 @@
 """A collection of widgets for the UI."""
 import math
 import sys
-from enum import Enum
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -233,6 +232,9 @@ class CalibrationWindow(Window):
         # If calibration has begun and the spacebar was pressed
         if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
             self.circles[self.activeCircleIndex].setLoading()
+            print(
+                f"Location: {self.circles[self.activeCircleIndex].getPositionOnScreen()}"
+            )
             self.captureEyeCoordsSignal.emit()
         elif event.key() == QtCore.Qt.Key_Escape:
             # Exit on esc press
@@ -316,6 +318,14 @@ class CalibrationCircle(QPushButton):
     """Circle with an active state and onClick handler."""
 
     active = False
+
+    def getPositionOnScreen(self):
+        """Return the screen coordinates of the center of the circle."""
+        return self.mapToGlobal(
+            QtCore.QPoint(
+                DesignTokens.circleBaseSize / 2, DesignTokens.circleBaseSize / 2
+            )
+        )
 
     def toggleActive(self):
         self.active = not self.active
