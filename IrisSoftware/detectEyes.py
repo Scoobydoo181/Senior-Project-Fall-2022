@@ -86,6 +86,12 @@ class EyeDetection:
         Increasing this value will reduce the amount of noise in the detection image, and enlarge the pupil area.'''
         self.numBlurIterations = numIterations
 
+    def detectFace(self, image):
+        '''Detect a face in the image'''
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        faces = self.faceDetector.detectMultiScale(gray)
+        return max(faces, key=lambda box: box[2]*box[3]) if len(faces) > 0 else None
+
     @filterFalsePositives
     def detectEyes(self, image):
         '''Returns the coordinates of the eyes in the image using the specified detector'''
@@ -148,7 +154,8 @@ class EyeDetection:
 
     def faceEyeCascadeBlobDetector(self, image, demo=False):
         '''Detect eyes using a face Haar cascade detector, an eye Haar cascade detector, and blob detection'''
-        cv2.imwrite(f"image1_input.jpg", image)
+        if demo:
+            cv2.imwrite(f"image1_input.jpg", image)
 
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         if demo:
