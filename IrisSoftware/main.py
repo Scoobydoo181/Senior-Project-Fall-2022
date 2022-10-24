@@ -26,7 +26,7 @@ class IrisSoftware:
             self.faceBox = None
             self.lastCursorPos = pyautogui.position()
             self.skipMouseMovement = False
-            self.interpolatorType = InterpolationType.TANGENT_LINEAR_REGRESSION # InterpolationType.TANGENT_LINEAR_REGRESSION
+            self.interpolatorType = InterpolationType.TANGENT_LINEAR_REGRESSION
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
