@@ -26,7 +26,7 @@ class IrisSoftware:
             self.faceBox = None
             self.lastCursorPos = pyautogui.position()
             self.skipMouseMovement = False
-            self.interpolatorType = InterpolationType.JOYSTICK # InterpolationType.LINEAR_REGRESSION
+            self.interpolatorType = InterpolationType.TANGENT_LINEAR_REGRESSION # InterpolationType.TANGENT_LINEAR_REGRESSION
 
     def __init__(self) -> None:
         print("Initializing Iris Software...")
@@ -237,7 +237,7 @@ class IrisSoftware:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            # self.moveMouse(screenX, screenY)
+            self.moveMouse(screenX, screenY)
             self.state.skipMouseMovement = False
             
         # Release the camera before exiting

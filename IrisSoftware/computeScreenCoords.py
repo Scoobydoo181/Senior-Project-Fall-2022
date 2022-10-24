@@ -106,10 +106,10 @@ class TangentLinearRegressionInterpolator():
 
     def computeScreenCoords(self, eyeCoords):
         # x_screen = dist_to_screen * tan(x_camera - x_camera_center) + x_screen_center
-        x_tan = math.avg(math.tan(eyeCoords[0][0] - self.x_pupil_left_center), math.tan(eyeCoords[1][0] - self.x_pupil_right_center))
+        x_tan = mean([math.tan(eyeCoords[0][0] - self.x_pupil_left_center), math.tan(eyeCoords[1][0] - self.x_pupil_right_center)])
         x_prediction = (self.x_dist * x_tan) + self.x_center_screen
 
-        y_tan = math.avg(math.tan(eyeCoords[0][1] - self.y_pupil_left_center), math.tan(eyeCoords[1][1] - self.y_pupil_right_center))
+        y_tan = mean([math.tan(eyeCoords[0][1] - self.y_pupil_left_center), math.tan(eyeCoords[1][1] - self.y_pupil_right_center)])
         y_prediction = (self.y_dist * y_tan) + self.y_center_screen
         # prediction = self.model.predict(df_X.T)
         return(x_prediction, y_prediction)
@@ -134,20 +134,22 @@ class JoystickInterpolator():
                 screenXData.append(screenX)
                 screenYData.append(screenY)
 
-        self.leftYMin = mean(sorted(leftEyeYData)[:3])
-        self.rightYMin = mean(sorted(rightEyeYData)[:3])
+        size = math.floor(math.sqrt(len(leftEyeXData)))
 
-        self.leftXMin = mean(sorted(leftEyeXData)[:3])
-        self.rightXMin = mean(sorted(rightEyeXData)[:3])
+        self.leftYMin = mean(sorted(leftEyeYData)[:size])
+        self.rightYMin = mean(sorted(rightEyeYData)[:size])
 
-        self.leftYMax = mean(sorted(leftEyeYData)[-3:])
-        self.rightYMax = mean(sorted(rightEyeYData)[-3:])
+        self.leftXMin = mean(sorted(leftEyeXData)[:size])
+        self.rightXMin = mean(sorted(rightEyeXData)[:size])
 
-        self.leftXMax = mean(sorted(leftEyeXData)[-3:])
-        self.rightXMax = mean(sorted(rightEyeXData)[-3:])
+        self.leftYMax = mean(sorted(leftEyeYData)[-size:])
+        self.rightYMax = mean(sorted(rightEyeYData)[-size:])
 
-        self.screenXMax = mean(sorted(screenXData)[-3:])
-        self.screenYMax = mean(sorted(screenYData)[-3:])
+        self.leftXMax = mean(sorted(leftEyeXData)[-size:])
+        self.rightXMax = mean(sorted(rightEyeXData)[-size:])
+
+        self.screenXMax = mean(sorted(screenXData)[-size:])
+        self.screenYMax = mean(sorted(screenYData)[-size:])
 
     def computeScreenCoords(self, eyeCoords):
         leftEyeX, leftEyeY = eyeCoords[0]
