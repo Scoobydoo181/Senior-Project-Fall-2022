@@ -19,8 +19,9 @@ class UI:
         self.app = QApplication([])
         # Load Inter font
         QtGui.QFontDatabase.addApplicationFont(INTER_FONT_PATH)
+        self.cameraResolution = cameraResolution
         # Create windows
-        self.mainWindow = MainWindow(cameraResolution)
+        self.mainWindow: MainWindow
         self.calibrationWindow: CalibrationWindow
         self.menuWindow: MenuWindow
         # Create callback properties
@@ -29,8 +30,6 @@ class UI:
         self.onCalibrationComplete: callable
         self.onChangePupilModel: callable
         self.onChangeEyeColorThreshold: callable
-        # Connect signal handlers
-        self.mainWindow.openMenuSignal.connect(self.__handleMenuOpen)
         print("UI initialized.")
 
     def runInitialCalibration(self):
@@ -39,6 +38,7 @@ class UI:
         return self.app.exec()
 
     def run(self):
+        self.__createMainWindow()
         self.mainWindow.show()
         print("UI running.")
         return self.app.exec()
@@ -51,11 +51,20 @@ class UI:
         self.menuWindow.close()
         self.menuWindow = None
 
+    def closeMainWindow(self):
+        self.mainWindow.close()
+        self.mainWindow = None
+
     def emitCameraFrame(self, frame):
-        self.mainWindow.cameraFrameSignal.emit(frame)
+        if self.mainWindow is not None:
+            self.mainWindow.cameraFrameSignal.emit(frame)
 
     def emitFinishedCaptureEyeCoords(self):
         self.calibrationWindow.finishedCaptureEyeCoordsSignal.emit()
+
+    def __createMainWindow(self):
+        self.mainWindow = MainWindow(self.cameraResolution)
+        self.mainWindow.openMenuSignal.connect(self.__handleMenuOpen)
 
     def __openCalibration(self, initial=False):
         # Create window
@@ -105,7 +114,7 @@ class UI:
 
     @QtCore.Slot()
     def __handleCalibrationOpen(self):
-        self.mainWindow.showMinimized()
+        self.closeMainWindow()
         self.menuWindow.showMinimized()
         self.__openCalibration()
 
@@ -120,6 +129,7 @@ class UI:
         if hasattr(self, "onCalibrationCancel"):
             self.onCalibrationCancel()
         self.closeCalibrationWindow()
+        self.__createMainWindow()
         self.mainWindow.showNormal()
         self.menuWindow.showNormal()
 
@@ -137,6 +147,7 @@ class UI:
         if hasattr(self, "onCalibrationComplete"):
             self.onCalibrationComplete()
         self.closeCalibrationWindow()
+        self.__createMainWindow()
         self.mainWindow.showNormal()
         self.menuWindow.showNormal()
 

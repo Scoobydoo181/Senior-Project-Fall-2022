@@ -51,21 +51,27 @@ class IrisSoftware:
         # Load calibration data
         if os.path.exists(CALIBRATION_FILE_NAME):
             with open(CALIBRATION_FILE_NAME, "rb") as f:
-                self.state.faceBox = pickle.load(f)['faceBox']
+                self.state.faceBox = pickle.load(f)["faceBox"]
 
-            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, self.state.interpolatorType)
+            self.interpolator.calibrateInterpolator(
+                CALIBRATION_FILE_NAME, self.state.interpolatorType
+            )
             self.state.isCalibrated = True
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
 
     def moveMouse(self, screenX, screenY):
-        '''Move the mouse to the given screen coordinates, moving smoothly over multiple frames'''
+        """Move the mouse to the given screen coordinates, moving smoothly over multiple frames"""
         # Smooth out the mouse movement to minimize jitter
         smoothingFactor = 0.1
 
-        x = self.state.lastCursorPos[0] + ((screenX - self.state.lastCursorPos[0]) * smoothingFactor)
-        y = self.state.lastCursorPos[1] + ((screenY - self.state.lastCursorPos[1]) * smoothingFactor)
+        x = self.state.lastCursorPos[0] + (
+            (screenX - self.state.lastCursorPos[0]) * smoothingFactor
+        )
+        y = self.state.lastCursorPos[1] + (
+            (screenY - self.state.lastCursorPos[1]) * smoothingFactor
+        )
 
         if not self.state.skipMouseMovement:
             # print("Moving mouse from", pyautogui.position(), " to: ", (x, y), "goal coords: ", (screenX, screenY))
@@ -75,14 +81,14 @@ class IrisSoftware:
     def safeComputeCoords(self, eyeCoords):
         # return last cursor position if available when eyes aren't properly detected, if not return center screen
         if len(eyeCoords) < 2:
-                self.state.skipMouseMovement = True
-                return self.state.lastCursorPos
-        
+            self.state.skipMouseMovement = True
+            return self.state.lastCursorPos
+
         newCoords = self.interpolator.computeScreenCoords(eyeCoords)
 
-        if newCoords is not None: 
-            return newCoords 
-        else: 
+        if newCoords is not None:
+            return newCoords
+        else:
             self.state.skipMouseMovement = True
             return self.state.lastCursorPos
 
@@ -155,11 +161,11 @@ class IrisSoftware:
 
         self.state.calibrationEyeCoords.append(eyeCoords)
         print(f"Captured calibration eye coords: {eyeCoords}")
-        
+
         faceBox = self.eyeDetector.detectFace(frame)
         if faceBox is not None:
             self.state.faceBoxes.append(faceBox)
-            
+
         self.ui.emitFinishedCaptureEyeCoords()
 
     def averageFaceBox(self, faceBoxes):
@@ -178,7 +184,12 @@ class IrisSoftware:
             w += faceBox[2]
             h += faceBox[3]
 
-        return (round(x / len(faceBoxes)), round(y / len(faceBoxes)), round(w / len(faceBoxes)), round(h / len(faceBoxes)))
+        return (
+            round(x / len(faceBoxes)),
+            round(y / len(faceBoxes)),
+            round(w / len(faceBoxes)),
+            round(h / len(faceBoxes)),
+        )
 
     def saveCalibrationData(self):
         """Saves the current calibration data and trains the screen coords model."""
@@ -221,7 +232,9 @@ class IrisSoftware:
 
             # Draw the face box
             faceX, faceY, faceW, faceH = self.state.faceBox
-            frame = cv2.rectangle(frame, (faceX, faceY), (faceX + faceW, faceY + faceH), (0, 0, 255), 2)
+            frame = cv2.rectangle(
+                frame, (faceX, faceY), (faceX + faceW, faceY + faceH), (0, 0, 255), 2
+            )
 
             # Pass the frame to the UI
             self.ui.emitCameraFrame(frame)
@@ -239,7 +252,7 @@ class IrisSoftware:
             # # Move the mouse based on the eye coordinates
             self.moveMouse(screenX, screenY)
             self.state.skipMouseMovement = False
-            
+
         # Release the camera before exiting
         self.camera.release()
 
