@@ -233,26 +233,26 @@ if __name__ == '__main__':
                 screenXData.append(screenX)
                 screenYData.append(screenY)
 
-    plt.scatter(leftEyeYData, screenYData)
-    plt.title('Eye coordinate vs Screen coordinate')
-    plt.xlabel('Left Eye Y coordinate')
-    plt.ylabel('Screen Y coordinate')
-    plt.show()
+    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+    plt.subplots_adjust(top=0.93,
+                        bottom=0.1,
+                        left=0.08,
+                        right=0.925,
+                        hspace=0.31,
+                        wspace=0.315)
 
-    plt.scatter(rightEyeYData, screenYData)
-    plt.title('Eye coordinate vs Screen coordinate')
-    plt.xlabel('Right Eye Y coordinate')
-    plt.ylabel('Screen Y coordinate')
-    plt.show()
+    axs[0,0].scatter(leftEyeYData, screenYData)
+    axs[0, 0].set(title='Eye coordinate vs Screen coordinate', xlabel='Left Eye Y coordinate', ylabel='Screen Y coordinate')
+    # plt.show()
 
-    plt.scatter(leftEyeXData, screenXData)
-    plt.title('Eye coordinate vs Screen coordinate')
-    plt.xlabel('Left Eye X coordinate')
-    plt.ylabel('Screen X coordinate')
-    plt.show()
+    axs[0, 1].scatter(rightEyeYData, screenYData)
+    axs[0, 1].set(title='Eye coordinate vs Screen coordinate', xlabel='Right Eye Y coordinate', ylabel='Screen Y coordinate')
+    # plt.show()
 
-    plt.scatter(rightEyeXData, screenXData)
-    plt.title('Eye coordinate vs Screen coordinate')
-    plt.xlabel('Right Eye X coordinate')
-    plt.ylabel('Screen X coordinate')
+    axs[1, 0].scatter(leftEyeXData, screenXData)
+    axs[1, 0].set(title='Eye coordinate vs Screen coordinate', xlabel='Left Eye X coordinate', ylabel='Screen X coordinate')
+    # plt.show()
+
+    axs[1, 1].scatter(rightEyeXData, screenXData)
+    axs[1, 1].set(title='Eye coordinate vs Screen coordinate', xlabel='Right Eye X coordinate', ylabel='Screen X coordinate')
     plt.show()
