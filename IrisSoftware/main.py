@@ -13,6 +13,7 @@ from camera import Camera
 from settings import loadSettings, saveSettings, SETTINGS_FILE_NAME
 
 CALIBRATION_PROCESSING_LOCK = threading.Lock()
+RESUME_PROCESSING_EVENT = threading.Event()
 
 
 class IrisSoftware:
@@ -127,6 +128,7 @@ class IrisSoftware:
         self.state.calibrationEyeCoordinates = []
         self.state.calibrationCircleLocations = []
         self.state.isCalibrating = False
+        RESUME_PROCESSING_EVENT.set()
         print("Reset calibration state.")
 
     def performInitialConfiguration(self):
@@ -134,7 +136,7 @@ class IrisSoftware:
         detectedPupils = False
         framesToCapture = 10
 
-        for i in range(1, 21):
+        for i in range(1, 10):
             self.changeEyeColorThreshold(i)
 
             currDetectedEyeCoords = []
@@ -266,7 +268,8 @@ class IrisSoftware:
         while not self.state.shouldExit:
             # Skip processing if in calibration
             if self.state.isCalibrating:
-                continue
+                RESUME_PROCESSING_EVENT.wait()
+                RESUME_PROCESSING_EVENT.clear()
 
             # Get the camera frame
             frame = self.camera.getFrame()
