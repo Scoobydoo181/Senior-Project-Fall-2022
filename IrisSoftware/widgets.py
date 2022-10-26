@@ -219,7 +219,7 @@ class CalibrationWindow(Window):
         return super().keyPressEvent(event)
 
     def __drawCircles(self):
-        gridSize = 13
+        gridSize = 5
         circlesWidget = QWidget()
         verticalLayout = QVBoxLayout(circlesWidget)
         verticalLayout.setContentsMargins(0, 0, 0, 0)
