@@ -5,6 +5,7 @@ import sys
 import threading
 import cv2
 import pyautogui
+import numpy as np
 from detectEyes import EyeDetection
 from computeScreenCoords import Interpolator, InterpolationType
 from ui import UI, CALIBRATION_FILE_NAME, PupilModelOptions
@@ -21,7 +22,9 @@ class IrisSoftware:
         def __init__(self) -> None:
             self.shouldExit = False
             self.isCalibrated = False
-            self.calibrationEyeCoords: list[list[tuple]] = []
+            self.isCalibrating = False
+            self.calibrationFrames: list[list[np.ndarray]] = []
+            self.calibrationCircleLocations: list[tuple[int, int]] = []
             self.faceBoxes = []
             self.faceBox = None
             self.lastCursorPos = pyautogui.position()
@@ -38,9 +41,10 @@ class IrisSoftware:
         self.camera = Camera()
 
         self.ui = UI(self.camera.getResolution())
+        self.ui.onCalibrationOpen = self.setIsCalibrating
         self.ui.onCalibrationComplete = self.saveCalibrationData
-        self.ui.onCaptureCalibrationEyeCoords = self.captureCalibrationEyeCoords
-        self.ui.onCalibrationCancel = self.resetCalibrationEyeCoords
+        self.ui.onCaptureCalibrationData = self.captureCalibrationData
+        self.ui.onCalibrationCancel = self.resetCalibrationState
         self.ui.onChangePupilModel = self.changePupilModel
         self.ui.onChangeEyeColorThreshold = self.changeEyeColorThreshold
 
@@ -57,6 +61,9 @@ class IrisSoftware:
                 CALIBRATION_FILE_NAME, self.state.interpolatorType
             )
             self.state.isCalibrated = True
+
+    def setIsCalibrating(self):
+        self.state.isCalibrating = True
 
     def detectBlink(self, eyeCoords, blinkDuration) -> any:
         pass
@@ -97,6 +104,7 @@ class IrisSoftware:
         self.settings.eyeColorThreshold = value
         transformedValue = 45 + 5 * (value - 1)
         self.eyeDetector.setBlobThreshold(transformedValue)
+        print(f"Changed eye color threshold to {transformedValue}.")
         saveSettings(self.settings)
 
     def changePupilModel(self, value: PupilModelOptions):
@@ -105,15 +113,19 @@ class IrisSoftware:
             self.eyeDetector.setDetectionType(
                 EyeDetection.DetectionType.FACE_EYE_CASCADE_BLOB
             )
+            print("Changed pupil detection model to FACE_EYE_CASCADE_BLOB.")
         elif value == PupilModelOptions.SPEED:
             self.eyeDetector.setDetectionType(
                 EyeDetection.DetectionType.EYE_CASCADE_BLOB
             )
+            print("Changed pupil detection model to EYE_CASCADE_BLOB.")
         saveSettings(self.settings)
 
-    def resetCalibrationEyeCoords(self):
-        self.state.calibrationEyeCoords = []
-        print("Reset current calibration eye coords.")
+    def resetCalibrationState(self):
+        self.state.calibrationFrames = []
+        self.state.calibrationCircleLocations = []
+        self.state.isCalibrating = False
+        print("Reset calibration state.")
 
     def performInitialConfiguration(self):
         """Adjusts the eye color threshold until it detects pupils."""
@@ -145,28 +157,52 @@ class IrisSoftware:
                 "Failed to detect any pupil data during initial configuration."
             )
 
-    def captureCalibrationEyeCoords(self):
-        """Captures and stores a eye coords for calibration."""
-        eyeCoords = []
-        maxFramesToCapture = 30
+    def getMedianEyeCoordinatesFromFrames(self, frameList: list[list[np.ndarray]]):
+        """Converts a list of lists of camera frames into median eye coordinates."""
+        eyeCoordinates: list[list[tuple[float, float]]] = []
 
-        for _ in range(maxFramesToCapture):
+        for frames in frameList:
+            leftEyeCoordinates: list[tuple[int, int]] = []
+            rightEyeCoordinates: list[tuple[int, int]] = []
+
+            # Collect coordinates
+            for frame in frames:
+                eyeCoords = self.eyeDetector.detectEyes(frame)
+                if len(eyeCoords) == 2:
+                    leftEyeCoordinates.append(eyeCoords[0])
+                    rightEyeCoordinates.append(eyeCoords[1])
+                faceBox = self.eyeDetector.detectFace(frame)
+                if faceBox is not None:
+                    self.state.faceBoxes.append(faceBox)
+
+            # Determine median
+            medianCoordinates = [(None, None), (None, None)]
+            if len(leftEyeCoordinates) > 0 and len(rightEyeCoordinates) > 0:
+                leftEyeMedian = tuple(np.median(leftEyeCoordinates, axis=0))
+                rightEyeMedian = tuple(np.median(rightEyeCoordinates, axis=0))
+                medianCoordinates = [leftEyeMedian, rightEyeMedian]
+
+            eyeCoordinates.append(medianCoordinates)
+
+        return eyeCoordinates
+
+    def captureCalibrationData(self, circleLocation: tuple[int, int]):
+        """Captures camera frames and passes them to another thread to store."""
+        numFrames = 10
+        frames: list[np.ndarray] = []
+
+        # Collect camera frames
+        for _ in range(numFrames):
             frame = self.camera.getFrame()
-            eyeCoords = self.eyeDetector.detectEyes(frame)
-            if len(eyeCoords) >= 2:
-                break
+            frames.append(frame)
 
-        if len(eyeCoords) < 2:
-            eyeCoords = [(None, None), (None, None)]
+        # Store data
+        self.state.calibrationFrames.append(frames)
+        self.state.calibrationCircleLocations.append(circleLocation)
 
-        self.state.calibrationEyeCoords.append(eyeCoords)
-        print(f"Captured calibration eye coords: {eyeCoords}")
+        print("Collected calibration data.")
 
-        faceBox = self.eyeDetector.detectFace(frame)
-        if faceBox is not None:
-            self.state.faceBoxes.append(faceBox)
-
-        self.ui.emitFinishedCaptureEyeCoords()
+        self.ui.emitContinueCalibration()
 
     def averageFaceBox(self, faceBoxes):
         """Averages the face box coordinates."""
@@ -197,11 +233,11 @@ class IrisSoftware:
         if os.path.exists(CALIBRATION_FILE_NAME):
             os.remove(CALIBRATION_FILE_NAME)
 
-        # Add calibration circles' locations to calibration data
-        calibrationCircleLocations = self.ui.calibrationWindow.getCircleLocations()
         calibrationData = {
-            "eyeCoords": self.state.calibrationEyeCoords,
-            "calibrationCircleLocations": calibrationCircleLocations,
+            "eyeCoords": self.getMedianEyeCoordinatesFromFrames(
+                self.state.calibrationFrames
+            ),
+            "calibrationCircleLocations": self.state.calibrationCircleLocations,
             "faceBox": self.averageFaceBox(self.state.faceBoxes),
         }
         self.state.faceBox = self.averageFaceBox(self.state.faceBoxes)
@@ -213,13 +249,17 @@ class IrisSoftware:
         print("Saved new calibration data.")
 
         # Reset current calibration frames
-        self.resetCalibrationEyeCoords()
+        self.resetCalibrationState()
 
         # TODO: train screen coords model
 
     def processing(self):
         """Thread to run main loop of eye detection"""
         while not self.state.shouldExit:
+            # Skip processing if in calibration
+            if self.state.isCalibrating:
+                continue
+
             # Get the camera frame
             frame = self.camera.getFrame()
 
@@ -250,7 +290,7 @@ class IrisSoftware:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            self.moveMouse(screenX, screenY)
+            # self.moveMouse(screenX, screenY)
             self.state.skipMouseMovement = False
 
         # Release the camera before exiting

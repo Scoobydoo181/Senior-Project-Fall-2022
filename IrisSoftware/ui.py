@@ -2,7 +2,12 @@
 import sys
 import pathlib
 from PySide6.QtWidgets import QApplication
-from widgets import MainWindow, CalibrationWindow, MenuWindow, PupilModelOptions
+from widgets import (
+    MainWindow,
+    CalibrationWindow,
+    MenuWindow,
+    PupilModelOptions,
+)
 from PySide6 import QtCore, QtGui
 
 
@@ -25,7 +30,8 @@ class UI:
         self.calibrationWindow: CalibrationWindow
         self.menuWindow: MenuWindow
         # Create callback properties
-        self.onCaptureCalibrationEyeCoords: callable
+        self.onCalibrationOpen: callable
+        self.onCaptureCalibrationData: callable
         self.onCalibrationCancel: callable
         self.onCalibrationComplete: callable
         self.onChangePupilModel: callable
@@ -59,14 +65,19 @@ class UI:
         if self.mainWindow is not None:
             self.mainWindow.cameraFrameSignal.emit(frame)
 
-    def emitFinishedCaptureEyeCoords(self):
-        self.calibrationWindow.finishedCaptureEyeCoordsSignal.emit()
+    def emitContinueCalibration(self):
+        self.calibrationWindow.continueCalibrationSignal.emit()
+
+    def emitCalibrationComplete(self):
+        self.calibrationWindow.completeSignal.emit()
 
     def __createMainWindow(self):
         self.mainWindow = MainWindow(self.cameraResolution)
         self.mainWindow.openMenuSignal.connect(self.__handleMenuOpen)
 
     def __openCalibration(self, initial=False):
+        if hasattr(self, "onChangePupilModel"):
+            self.onCalibrationOpen()
         # Create window
         self.calibrationWindow = CalibrationWindow()
         # Connect signal handlers
@@ -84,8 +95,8 @@ class UI:
             )
             self.calibrationWindow.cancelSignal.connect(self.__handleCalibrationCancel)
 
-        self.calibrationWindow.captureEyeCoordsSignal.connect(
-            self.__handleCalibrationCaptureEyeCoords
+        self.calibrationWindow.captureDataSignal.connect(
+            self.__handleCaptureCalibrationData
         )
         # Show the window
         self.calibrationWindow.showFullScreen()
@@ -151,11 +162,11 @@ class UI:
         self.mainWindow.showNormal()
         self.menuWindow.showNormal()
 
-    @QtCore.Slot()
-    def __handleCalibrationCaptureEyeCoords(self):
+    @QtCore.Slot(tuple)
+    def __handleCaptureCalibrationData(self, circleLocation: tuple[int, int]):
         # Callback
-        if hasattr(self, "onCaptureCalibrationEyeCoords"):
-            self.onCaptureCalibrationEyeCoords()
+        if hasattr(self, "onCaptureCalibrationData"):
+            self.onCaptureCalibrationData(circleLocation)
 
     ### ###
 

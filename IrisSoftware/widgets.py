@@ -1,6 +1,5 @@
 """A collection of widgets for the UI."""
 import math
-import sys
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -173,10 +172,12 @@ class MainWindow(Window):
 class CalibrationWindow(Window):
     """Full-screen window with calibration steps."""
 
+    CALIBRATION_GRID_N = 5  # Calibration grid will be NxN
+
     completeSignal = QtCore.Signal()
     cancelSignal = QtCore.Signal()
-    captureEyeCoordsSignal = QtCore.Signal()
-    finishedCaptureEyeCoordsSignal = QtCore.Signal()
+    captureDataSignal = QtCore.Signal(tuple)
+    continueCalibrationSignal = QtCore.Signal()
 
     @QtCore.Slot()
     def __cancelCalibration(self):
@@ -193,51 +194,53 @@ class CalibrationWindow(Window):
     def __progressCalibration(self):
         self.circles[self.activeCircleIndex].setHidden()
         # Check if calibration is complete
-        if self.activeCircleIndex >= len(self.circles) - 1:
-            self.completeSignal.emit()
+        if self.activeCircleIndex == len(self.circles) - 1:
+            self.__drawFinishing()
+            # self.completeSignal.emit()
         # Otherwise, continue through calibration
         else:
             self.activeCircleIndex += 1
             self.circles[self.activeCircleIndex].toggleActive()
 
-    def getCircleLocations(self):
-        locs = []
-
-        for c in self.circles:
-            locs.append(c.getPositionOnScreen())
-
-        return locs
-
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         # If calibration has begun and the spacebar was pressed
         if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
-            self.captureEyeCoordsSignal.emit()
+            self.captureDataSignal.emit(
+                self.circles[self.activeCircleIndex].getPositionOnScreen()
+            )
         elif event.key() == QtCore.Qt.Key_Escape:
             # Exit on esc press
             self.cancelSignal.emit()
 
         return super().keyPressEvent(event)
 
+    def __drawFinishing(self):
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.addStretch()
+        layout.addWidget(QLabel("Finishing up..."))
+        layout.addStretch()
+        self.setCentralWidget(container)
+
     def __drawCircles(self):
-        gridSize = 5
         circlesWidget = QWidget()
         verticalLayout = QVBoxLayout(circlesWidget)
         verticalLayout.setContentsMargins(0, 0, 0, 0)
 
-        for i in range(gridSize):
+        for i in range(CalibrationWindow.CALIBRATION_GRID_N):
             # Create the horizontal layout
             horizontalLayout = QHBoxLayout()
             horizontalLayout.setContentsMargins(0, 0, 0, 0)
             verticalLayout.addLayout(horizontalLayout)
-            if i < gridSize - 1:
+            if i < CalibrationWindow.CALIBRATION_GRID_N - 1:
                 verticalLayout.addStretch()
 
             # Draw the circles
-            for j in range(gridSize):
+            for j in range(CalibrationWindow.CALIBRATION_GRID_N):
                 circle = CalibrationCircle()
                 horizontalLayout.addWidget(circle)
                 self.circles.append(circle)
-                if j < gridSize - 1:
+                if j < CalibrationWindow.CALIBRATION_GRID_N - 1:
                     horizontalLayout.addStretch()
 
         self.setCentralWidget(circlesWidget)
@@ -291,7 +294,7 @@ class CalibrationWindow(Window):
         self.activeCircleIndex: int = 0
         self.circles: list[CalibrationCircle] = []
 
-        self.finishedCaptureEyeCoordsSignal.connect(self.__progressCalibration)
+        self.continueCalibrationSignal.connect(self.__progressCalibration)
 
         self.__setupUI()
 
