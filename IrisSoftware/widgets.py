@@ -11,11 +11,13 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QSlider,
 )
+import pathlib
 import cv2
 import qimage2ndarray
 from numpy import ndarray
 from settings import loadSettings, PupilModelOptions
 
+LOADING_SPINNER_PATH = str(pathlib.Path("./resources/loading_spinner.gif").resolve())
 CALIBRATION_GRID_N = 5  # Calibration grid will be NxN
 
 
@@ -215,10 +217,23 @@ class CalibrationWindow(Window):
 
     def __drawFinishing(self):
         container = QWidget()
-        layout = QHBoxLayout(container)
+        layout = QVBoxLayout(container)
+        labelContainer = QHBoxLayout()
+        spinnerContainer = QHBoxLayout()
+
+        labelContainer.addStretch()
+        labelContainer.addWidget(QLabel("Finishing up..."))
+        labelContainer.addStretch()
+
+        spinnerContainer.addStretch()
+        spinnerContainer.addWidget(LoadingSpinner())
+        spinnerContainer.addStretch()
+
         layout.addStretch()
-        layout.addWidget(QLabel("Finishing up..."))
+        layout.addLayout(labelContainer)
+        layout.addLayout(spinnerContainer)
         layout.addStretch()
+
         self.setCentralWidget(container)
 
     def __drawCircles(self):
@@ -297,6 +312,18 @@ class CalibrationWindow(Window):
         self.continueCalibrationSignal.connect(self.__progressCalibration)
 
         self.__setupUI()
+
+
+class LoadingSpinner(QLabel):
+    """Spinner gif."""
+
+    def __init__(self):
+        super().__init__()
+
+        self.spinnerMovie = QtGui.QMovie(LOADING_SPINNER_PATH)
+        self.spinnerMovie.setScaledSize(QtCore.QSize(100, 100))
+        self.setMovie(self.spinnerMovie)
+        self.spinnerMovie.start()
 
 
 class CalibrationCircle(QPushButton):
