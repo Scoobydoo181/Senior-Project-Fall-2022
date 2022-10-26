@@ -8,9 +8,11 @@ import pyautogui
 import numpy as np
 from detectEyes import EyeDetection
 from computeScreenCoords import Interpolator, InterpolationType
-from ui import UI, CALIBRATION_FILE_NAME, PupilModelOptions
+from ui import UI, CALIBRATION_FILE_NAME, PupilModelOptions, CALIBRATION_GRID_N
 from camera import Camera
 from settings import loadSettings, saveSettings, SETTINGS_FILE_NAME
+
+CALIBRATION_PROCESSING_LOCK = threading.Lock()
 
 
 class IrisSoftware:
@@ -23,7 +25,7 @@ class IrisSoftware:
             self.shouldExit = False
             self.isCalibrated = False
             self.isCalibrating = False
-            self.calibrationFrames: list[list[np.ndarray]] = []
+            self.calibrationEyeCoordinates: list[list[tuple[float, float]]] = []
             self.calibrationCircleLocations: list[tuple[int, int]] = []
             self.faceBoxes = []
             self.faceBox = None
@@ -122,7 +124,7 @@ class IrisSoftware:
         saveSettings(self.settings)
 
     def resetCalibrationState(self):
-        self.state.calibrationFrames = []
+        self.state.calibrationEyeCoordinates = []
         self.state.calibrationCircleLocations = []
         self.state.isCalibrating = False
         print("Reset calibration state.")
@@ -157,34 +159,41 @@ class IrisSoftware:
                 "Failed to detect any pupil data during initial configuration."
             )
 
-    def getMedianEyeCoordinatesFromFrames(self, frameList: list[list[np.ndarray]]):
+    def processCalibrationFrames(self, frames: list[np.ndarray] = None):
         """Converts a list of lists of camera frames into median eye coordinates."""
-        eyeCoordinates: list[list[tuple[float, float]]] = []
 
-        for frames in frameList:
-            leftEyeCoordinates: list[tuple[int, int]] = []
-            rightEyeCoordinates: list[tuple[int, int]] = []
+        # Should never happen:
+        if not frames:
+            return
 
-            # Collect coordinates
-            for frame in frames:
-                eyeCoords = self.eyeDetector.detectEyes(frame)
-                if len(eyeCoords) == 2:
-                    leftEyeCoordinates.append(eyeCoords[0])
-                    rightEyeCoordinates.append(eyeCoords[1])
-                faceBox = self.eyeDetector.detectFace(frame)
-                if faceBox is not None:
-                    self.state.faceBoxes.append(faceBox)
+        leftEyeCoordinates: list[tuple[int, int]] = []
+        rightEyeCoordinates: list[tuple[int, int]] = []
 
-            # Determine median
-            medianCoordinates = [(None, None), (None, None)]
-            if len(leftEyeCoordinates) > 0 and len(rightEyeCoordinates) > 0:
-                leftEyeMedian = tuple(np.median(leftEyeCoordinates, axis=0))
-                rightEyeMedian = tuple(np.median(rightEyeCoordinates, axis=0))
-                medianCoordinates = [leftEyeMedian, rightEyeMedian]
+        # Collect coordinates
+        CALIBRATION_PROCESSING_LOCK.acquire()
+        for frame in frames:
+            eyeCoords = self.eyeDetector.detectEyes(frame)
+            if len(eyeCoords) == 2:
+                leftEyeCoordinates.append(eyeCoords[0])
+                rightEyeCoordinates.append(eyeCoords[1])
+            faceBox = self.eyeDetector.detectFace(frame)
+            if faceBox is not None:
+                self.state.faceBoxes.append(faceBox)
+        CALIBRATION_PROCESSING_LOCK.release()
 
-            eyeCoordinates.append(medianCoordinates)
+        # Determine median
+        medianCoordinates = [(None, None), (None, None)]
+        if len(leftEyeCoordinates) > 0 and len(rightEyeCoordinates) > 0:
+            leftEyeMedian = tuple(np.median(leftEyeCoordinates, axis=0))
+            rightEyeMedian = tuple(np.median(rightEyeCoordinates, axis=0))
+            medianCoordinates = [leftEyeMedian, rightEyeMedian]
 
-        return eyeCoordinates
+        self.state.calibrationEyeCoordinates.append(medianCoordinates)
+
+        print(f"Captured calibration eye coordinates: {medianCoordinates}.")
+
+        if len(self.state.calibrationEyeCoordinates) == CALIBRATION_GRID_N**2:
+            self.ui.emitCalibrationComplete()
 
     def captureCalibrationData(self, circleLocation: tuple[int, int]):
         """Captures camera frames and passes them to another thread to store."""
@@ -196,11 +205,12 @@ class IrisSoftware:
             frame = self.camera.getFrame()
             frames.append(frame)
 
-        # Store data
-        self.state.calibrationFrames.append(frames)
+        # Process/store data
         self.state.calibrationCircleLocations.append(circleLocation)
-
-        print("Collected calibration data.")
+        th = threading.Thread(
+            target=self.processCalibrationFrames, kwargs={"frames": frames}
+        )
+        th.start()
 
         self.ui.emitContinueCalibration()
 
@@ -234,9 +244,7 @@ class IrisSoftware:
             os.remove(CALIBRATION_FILE_NAME)
 
         calibrationData = {
-            "eyeCoords": self.getMedianEyeCoordinatesFromFrames(
-                self.state.calibrationFrames
-            ),
+            "eyeCoords": self.state.calibrationEyeCoordinates,
             "calibrationCircleLocations": self.state.calibrationCircleLocations,
             "faceBox": self.averageFaceBox(self.state.faceBoxes),
         }

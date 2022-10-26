@@ -16,6 +16,8 @@ import qimage2ndarray
 from numpy import ndarray
 from settings import loadSettings, PupilModelOptions
 
+CALIBRATION_GRID_N = 5  # Calibration grid will be NxN
+
 
 class DesignTokens:
     """Namespace for tokens used in styling UI components."""
@@ -172,8 +174,6 @@ class MainWindow(Window):
 class CalibrationWindow(Window):
     """Full-screen window with calibration steps."""
 
-    CALIBRATION_GRID_N = 5  # Calibration grid will be NxN
-
     completeSignal = QtCore.Signal()
     cancelSignal = QtCore.Signal()
     captureDataSignal = QtCore.Signal(tuple)
@@ -196,7 +196,6 @@ class CalibrationWindow(Window):
         # Check if calibration is complete
         if self.activeCircleIndex == len(self.circles) - 1:
             self.__drawFinishing()
-            # self.completeSignal.emit()
         # Otherwise, continue through calibration
         else:
             self.activeCircleIndex += 1
@@ -227,20 +226,21 @@ class CalibrationWindow(Window):
         verticalLayout = QVBoxLayout(circlesWidget)
         verticalLayout.setContentsMargins(0, 0, 0, 0)
 
-        for i in range(CalibrationWindow.CALIBRATION_GRID_N):
+        for i in range(CALIBRATION_GRID_N):
             # Create the horizontal layout
             horizontalLayout = QHBoxLayout()
             horizontalLayout.setContentsMargins(0, 0, 0, 0)
             verticalLayout.addLayout(horizontalLayout)
-            if i < CalibrationWindow.CALIBRATION_GRID_N - 1:
+            if i < CALIBRATION_GRID_N - 1:
                 verticalLayout.addStretch()
 
             # Draw the circles
-            for j in range(CalibrationWindow.CALIBRATION_GRID_N):
+            for j in range(CALIBRATION_GRID_N):
                 circle = CalibrationCircle()
+                circle.setHidden()
                 horizontalLayout.addWidget(circle)
                 self.circles.append(circle)
-                if j < CalibrationWindow.CALIBRATION_GRID_N - 1:
+                if j < CALIBRATION_GRID_N - 1:
                     horizontalLayout.addStretch()
 
         self.setCentralWidget(circlesWidget)

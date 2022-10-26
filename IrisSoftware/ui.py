@@ -7,6 +7,7 @@ from widgets import (
     CalibrationWindow,
     MenuWindow,
     PupilModelOptions,
+    CALIBRATION_GRID_N,
 )
 from PySide6 import QtCore, QtGui
 
