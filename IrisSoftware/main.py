@@ -93,9 +93,13 @@ class IrisSoftware:
             return self.state.lastCursorPos
 
     def changeEyeColorThreshold(self, value: int):
-        """Take a value within EYE_COLOR_THRESHOLD_RANGE and scale it up to a max of 150."""
+        """Take a value within EYE_COLOR_THRESHOLD_RANGE and scale it up to a max of ~150."""
+        rangeMax = EYE_COLOR_THRESHOLD_RANGE[1]
+        step = 150 // rangeMax
+
         self.settings.eyeColorThreshold = value
-        transformedValue = 5 * (value - 1)
+        transformedValue = step * (value)
+        print(transformedValue)
         self.eyeDetector.setBlobThreshold(transformedValue)
         saveSettings(self.settings)
 

@@ -495,7 +495,7 @@ class SelectionGroup(QWidget):
         layout.addStretch()
 
 
-EYE_COLOR_THRESHOLD_RANGE = (0, 30)
+EYE_COLOR_THRESHOLD_RANGE = (0, 20)
 
 
 class MenuWindow(Window):
@@ -515,6 +515,7 @@ class MenuWindow(Window):
         self.calibrationButtonContainer: QWidget
 
         self.eyeColorThresholdContainer: QWidget
+        self.eyeColorThresholdValueLabel: QLabel
 
         self.pupilModelMapping = {
             PupilModelOptions.ACCURACY: "Accuracy",
@@ -554,9 +555,18 @@ class MenuWindow(Window):
             pupilModelSelectionOptions, defaultValue
         )
 
+    def __eyeColorThresholdValueChange(self, value: int):
+        self.changeEyeColorThresholdSignal.emit(value)
+        self.eyeColorThresholdValueLabel.setText(f"Value: {value}")
+
     def __setupEyeColorThresholdSlider(self):
         self.eyeColorThresholdContainer = QWidget()
-        layout = QHBoxLayout(self.eyeColorThresholdContainer)
+        verticalLayout = QVBoxLayout(self.eyeColorThresholdContainer)
+        horizontalLayout = QHBoxLayout()
+
+        self.eyeColorThresholdValueLabel = QLabel(
+            f"Value: {self.savedSettings.eyeColorThreshold}"
+        )
 
         eyeColorThresholdSlider = Slider(
             EYE_COLOR_THRESHOLD_RANGE[0],
@@ -564,11 +574,17 @@ class MenuWindow(Window):
             self.savedSettings.eyeColorThreshold,
         )
         eyeColorThresholdSlider.valueChanged.connect(
-            self.changeEyeColorThresholdSignal.emit
+            self.__eyeColorThresholdValueChange
         )
 
-        layout.addWidget(eyeColorThresholdSlider)
-        layout.addStretch()
+        verticalLayout.addLayout(horizontalLayout)
+        verticalLayout.addWidget(
+            self.eyeColorThresholdValueLabel, alignment=QtCore.Qt.AlignHCenter
+        )
+
+        horizontalLayout.addWidget(QLabel("Dark Eyes"))
+        horizontalLayout.addWidget(eyeColorThresholdSlider)
+        horizontalLayout.addWidget(QLabel("Light Eyes"))
 
     def __setupCalibrationButton(self):
         self.calibrationButtonContainer = QWidget()
@@ -591,7 +607,7 @@ class MenuWindow(Window):
         modelPrioritizationLabel = ProseText("Model Prioritization")
         eyeColorThresholdLabel = ProseText("Eye Color Threshold")
         eyeColorThresholdDesc = ProseText(
-            "Adjust this if the program is not properly detecting your pupils. A higher value will work better for light colored eyes.",
+            "If the program is not detecting your eyes, please try adjusting this value visually until your eyes are detected.",
             True,
         )
         calibrationLabel = ProseText("Calibration")
