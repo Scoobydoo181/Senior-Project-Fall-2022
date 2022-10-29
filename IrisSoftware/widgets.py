@@ -495,6 +495,9 @@ class SelectionGroup(QWidget):
         layout.addStretch()
 
 
+EYE_COLOR_THRESHOLD_RANGE = (0, 30)
+
+
 class MenuWindow(Window):
     """Menu for settings of the program."""
 
@@ -555,7 +558,11 @@ class MenuWindow(Window):
         self.eyeColorThresholdContainer = QWidget()
         layout = QHBoxLayout(self.eyeColorThresholdContainer)
 
-        eyeColorThresholdSlider = Slider(1, 10, self.savedSettings.eyeColorThreshold)
+        eyeColorThresholdSlider = Slider(
+            EYE_COLOR_THRESHOLD_RANGE[0],
+            EYE_COLOR_THRESHOLD_RANGE[1],
+            self.savedSettings.eyeColorThreshold,
+        )
         eyeColorThresholdSlider.valueChanged.connect(
             self.changeEyeColorThresholdSignal.emit
         )

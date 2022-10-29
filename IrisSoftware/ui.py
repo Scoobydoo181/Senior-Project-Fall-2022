@@ -2,7 +2,13 @@
 import sys
 import pathlib
 from PySide6.QtWidgets import QApplication
-from widgets import MainWindow, CalibrationWindow, MenuWindow, PupilModelOptions
+from widgets import (
+    MainWindow,
+    CalibrationWindow,
+    MenuWindow,
+    PupilModelOptions,
+    EYE_COLOR_THRESHOLD_RANGE,
+)
 from PySide6 import QtCore, QtGui
 
 
