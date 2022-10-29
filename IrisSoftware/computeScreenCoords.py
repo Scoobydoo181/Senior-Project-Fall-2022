@@ -7,6 +7,8 @@ from scipy.interpolate import LinearNDInterpolator
 import os
 import pickle
 import math
+import pyautogui
+from scipy import optimize
 import matplotlib.pyplot as plt
 from statistics import mean
 from ui import CALIBRATION_FILE_NAME
@@ -157,19 +159,20 @@ class JoystickInterpolator():
 
         if leftEyeX < self.leftXMin and rightEyeX < self.rightXMin:
             # print('Moving right')
-            return self.screenXMax, self.screenYMax / 2
+            return self.screenXMax, pyautogui.position()[1]
         elif leftEyeX > self.leftXMax and rightEyeX > self.rightXMax:
             # print('Moving left')
-            return (0, self.screenYMax / 2)
+            return (0, pyautogui.position()[1])
 
         if leftEyeY < self.leftYMin and rightEyeY < self.rightYMin:
             # print('Moving up')
-            return self.screenXMax / 2, 0
+            return pyautogui.position()[0], 0
         elif leftEyeY > self.leftYMax and rightEyeY > self.rightYMax:
             # print('Moving down')
-            return self.screenXMax / 2, self.screenYMax
+            return pyautogui.position()[0], self.screenYMax
 
     # what if both at same time? Make nested
+    # move laterally, not in a diamond
 
 class Interpolator():
     def __init__(self):
@@ -230,8 +233,26 @@ if __name__ == '__main__':
                 screenXData.append(screenX)
                 screenYData.append(screenY)
 
-    plt.scatter(rightEyeYData, screenYData)
-    plt.title('Eye coordinate vs Screen coordinate')
-    plt.xlabel('Eye Y coordinate')
-    plt.ylabel('Screen Y coordinate')
+    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+    plt.subplots_adjust(top=0.93,
+                        bottom=0.1,
+                        left=0.08,
+                        right=0.925,
+                        hspace=0.31,
+                        wspace=0.315)
+
+    axs[0,0].scatter(leftEyeYData, screenYData)
+    axs[0, 0].set(title='Eye coordinate vs Screen coordinate', xlabel='Left Eye Y coordinate', ylabel='Screen Y coordinate')
+    # plt.show()
+
+    axs[0, 1].scatter(rightEyeYData, screenYData)
+    axs[0, 1].set(title='Eye coordinate vs Screen coordinate', xlabel='Right Eye Y coordinate', ylabel='Screen Y coordinate')
+    # plt.show()
+
+    axs[1, 0].scatter(leftEyeXData, screenXData)
+    axs[1, 0].set(title='Eye coordinate vs Screen coordinate', xlabel='Left Eye X coordinate', ylabel='Screen X coordinate')
+    # plt.show()
+
+    axs[1, 1].scatter(rightEyeXData, screenXData)
+    axs[1, 1].set(title='Eye coordinate vs Screen coordinate', xlabel='Right Eye X coordinate', ylabel='Screen X coordinate')
     plt.show()
