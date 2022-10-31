@@ -157,17 +157,17 @@ class JoystickInterpolator():
         leftEyeX, leftEyeY = eyeCoords[0]
         rightEyeX, rightEyeY = eyeCoords[1]
 
-        if leftEyeX < self.leftXMin and rightEyeX < self.rightXMin:
+        if leftEyeX < self.leftXMin or rightEyeX < self.rightXMin:
             # print('Moving right')
             return self.screenXMax, pyautogui.position()[1]
-        elif leftEyeX > self.leftXMax and rightEyeX > self.rightXMax:
+        elif leftEyeX > self.leftXMax or rightEyeX > self.rightXMax:
             # print('Moving left')
             return (0, pyautogui.position()[1])
 
-        if leftEyeY < self.leftYMin and rightEyeY < self.rightYMin:
+        if leftEyeY < self.leftYMin or rightEyeY < self.rightYMin:
             # print('Moving up')
             return pyautogui.position()[0], 0
-        elif leftEyeY > self.leftYMax and rightEyeY > self.rightYMax:
+        elif leftEyeY > self.leftYMax or rightEyeY > self.rightYMax:
             # print('Moving down')
             return pyautogui.position()[0], self.screenYMax
 
