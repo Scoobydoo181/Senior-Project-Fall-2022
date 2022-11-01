@@ -7,7 +7,7 @@ import cv2
 import pyautogui
 from detectEyes import EyeDetection
 from computeScreenCoords import Interpolator, InterpolationType
-from ui import UI, CALIBRATION_FILE_NAME, PupilModelOptions
+from ui import UI, CALIBRATION_FILE_NAME, PupilModelOptions, EYE_COLOR_THRESHOLD_RANGE
 from camera import Camera
 from settings import loadSettings, saveSettings, SETTINGS_FILE_NAME
 
@@ -93,9 +93,13 @@ class IrisSoftware:
             return self.state.lastCursorPos
 
     def changeEyeColorThreshold(self, value: int):
-        """Take a value from 1-10 and scale it up."""
+        """Take a value within EYE_COLOR_THRESHOLD_RANGE and scale it up to a max of ~150."""
+        rangeMax = EYE_COLOR_THRESHOLD_RANGE[1]
+        step = 150 // rangeMax
+
         self.settings.eyeColorThreshold = value
-        transformedValue = 45 + 5 * (value - 1)
+        transformedValue = step * (value)
+        print(transformedValue)
         self.eyeDetector.setBlobThreshold(transformedValue)
         saveSettings(self.settings)
 
@@ -120,7 +124,7 @@ class IrisSoftware:
         detectedPupils = False
         framesToCapture = 10
 
-        for i in range(1, 21):
+        for i in range(EYE_COLOR_THRESHOLD_RANGE[1] + 1):
             self.changeEyeColorThreshold(i)
 
             currDetectedEyeCoords = []
@@ -250,7 +254,7 @@ class IrisSoftware:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            self.moveMouse(screenX, screenY)
+            # self.moveMouse(screenX, screenY)
             self.state.skipMouseMovement = False
 
         # Release the camera before exiting
