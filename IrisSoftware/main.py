@@ -58,9 +58,6 @@ class IrisSoftware:
             )
             self.state.isCalibrated = True
 
-    def detectBlink(self, eyeCoords, blinkDuration) -> any:
-        pass
-
     def moveMouse(self, screenX, screenY):
         """Move the mouse to the given screen coordinates, moving smoothly over multiple frames"""
         # Smooth out the mouse movement to minimize jitter
@@ -240,18 +237,27 @@ class IrisSoftware:
                 frame, (faceX, faceY), (faceX + faceW, faceY + faceH), (0, 0, 255), 2
             )
 
+            if self.state.interpolatorType == InterpolationType.JOYSTICK:
+                # Draw the eye boxes for Joystick mode
+                topLeft, bottomRight = self.interpolator.getLeftEyeBox()
+                frame = cv2.rectangle(frame, topLeft, bottomRight, (0, 0, 255), 2)
+
+                topLeft, bottomRight = self.interpolator.getRightEyeBox()
+                frame = cv2.rectangle(frame, topLeft, bottomRight, (0, 0, 255), 2)
+
             # Pass the frame to the UI
             self.ui.emitCameraFrame(frame)
 
             # # Check for blinks
-            # didBlink = self.detectBlink(eyeCoords, self.blinkDuration)
+            didBlink = self.eyeDetector.detectBlink(eyeCoords)
 
             # # Determine screen coordinates from eye coordinates
             screenX, screenY = self.safeComputeCoords(eyeCoords)
 
             # # Click the mouse if the user has blinked
-            # if didBlink:
-            #     clickMouse(screenX, screenY)
+            if didBlink:
+                print("Blink detected")
+                pyautogui.click()
 
             # # Move the mouse based on the eye coordinates
             self.moveMouse(screenX, screenY)

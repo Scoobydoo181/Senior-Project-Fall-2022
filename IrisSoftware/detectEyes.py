@@ -61,6 +61,9 @@ class EyeDetection:
         self.blobThreshold = 45
         self.numBlurIterations = 7
 
+        self.blinkCounter = 0
+        self.minBlinkDuration = 40
+
     def setDetectionType(self, detectionType):
         '''Set the detection type to the specified enum value'''
         self.detectionType = detectionType
@@ -86,11 +89,25 @@ class EyeDetection:
         Increasing this value will reduce the amount of noise in the detection image, and enlarge the pupil area.'''
         self.numBlurIterations = numIterations
 
+    def setMinBlinkDuration(self, dur):
+        '''Set the number of frames of no detected pupils before a blink is detected'''
+        self.minBlinkDuration = dur
+
     def detectFace(self, image):
         '''Detect a face in the image'''
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         faces = self.faceDetector.detectMultiScale(gray)
         return max(faces, key=lambda box: box[2]*box[3]) if len(faces) > 0 else None
+
+    def detectBlink(self, eyeCoords):
+        if len(eyeCoords) < 2:
+            self.blinkCounter += 1
+
+        if self.blinkCounter >= self.minBlinkDuration:
+            self.blinkCounter = 0
+            return True
+        else:
+            return False
 
     @filterFalsePositives
     def detectEyes(self, image):
