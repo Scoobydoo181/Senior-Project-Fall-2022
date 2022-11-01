@@ -99,7 +99,7 @@ class IrisSoftware:
 
         self.settings.eyeColorThreshold = value
         transformedValue = step * (value)
-        print(transformedValue)
+        print("Set detection threshold: ", transformedValue)
         self.eyeDetector.setBlobThreshold(transformedValue)
         saveSettings(self.settings)
 
@@ -254,7 +254,7 @@ class IrisSoftware:
             #     clickMouse(screenX, screenY)
 
             # # Move the mouse based on the eye coordinates
-            # self.moveMouse(screenX, screenY)
+            self.moveMouse(screenX, screenY)
             self.state.skipMouseMovement = False
 
         # Release the camera before exiting
