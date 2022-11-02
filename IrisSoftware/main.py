@@ -21,6 +21,7 @@ class IrisSoftware:
         def __init__(self) -> None:
             self.shouldExit = False
             self.isCalibrated = False
+            self.currentlyCalibrating = False
             self.calibrationEyeCoords: list[list[tuple]] = []
             self.faceBoxes = []
             self.faceBox = None
@@ -114,6 +115,7 @@ class IrisSoftware:
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
+        self.state.currentlyCalibrating = False
         print("Reset current calibration eye coords.")
 
     def performInitialConfiguration(self):
@@ -148,6 +150,9 @@ class IrisSoftware:
 
     def captureCalibrationEyeCoords(self):
         """Captures and stores a eye coords for calibration."""
+        # not best spot to set currently calibrating to true, ideally should be another signal that is called under __openCalibration in ui.py or in calibrationwindow widget initialization
+        self.state.currentlyCalibrating = True
+
         eyeCoords = []
         maxFramesToCapture = 30
 
@@ -213,15 +218,18 @@ class IrisSoftware:
 
         print("Saved new calibration data.")
 
-        # Reset current calibration frames
-        self.resetCalibrationEyeCoords()
-
         # Train screen coords model
         self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, self.state.interpolatorType)
+
+        # Reset current calibration frames
+        self.resetCalibrationEyeCoords()
 
     def processing(self):
         """Thread to run main loop of eye detection"""
         while not self.state.shouldExit:
+            if self.state.currentlyCalibrating:
+                continue
+            
             # Get the camera frame
             frame = self.camera.getFrame()
 
