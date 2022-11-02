@@ -216,7 +216,8 @@ class IrisSoftware:
         # Reset current calibration frames
         self.resetCalibrationEyeCoords()
 
-        # TODO: train screen coords model
+        # Train screen coords model
+        self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, self.state.interpolatorType)
 
     def processing(self):
         """Thread to run main loop of eye detection"""
