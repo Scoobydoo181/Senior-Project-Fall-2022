@@ -279,7 +279,7 @@ class IrisSoftware:
             result = self.ui.runInitialCalibration()
             if result == -1:
                 sys.exit()
-            self.interpolator.calibrateInterpolator()
+            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, self.state.interpolatorType)
             self.state.isCalibrated = True
         # Spawn the processing thread
         print("Launching processing thread...")
