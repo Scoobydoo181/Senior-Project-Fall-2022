@@ -20,6 +20,26 @@ from settings import loadSettings, PupilModelOptions
 MODIFIER_KEY = "CMD" if sys.platform == "darwin" else "CTRL"
 
 
+def checkCloseKeyCombo(event: QtGui.QKeyEvent):
+    return event.keyCombination() == QtCore.QKeyCombination.fromCombined(
+        QtCore.Qt.CTRL | QtCore.Qt.Key_W
+    )
+
+
+def checkMenuKeyCombo(event: QtGui.QKeyEvent):
+    return event.keyCombination() == QtCore.QKeyCombination.fromCombined(
+        QtCore.Qt.CTRL | QtCore.Qt.Key_1
+    )
+
+
+def checkCancelKey(event: QtGui.QKeyEvent):
+    return event.key() == QtCore.Qt.Key_Escape
+
+
+def checkContinueKey(event: QtGui.QKeyEvent):
+    return event.key() == QtCore.Qt.Key_Enter or event.key() == QtCore.Qt.Key_Return
+
+
 class DesignTokens:
     """Namespace for tokens used in styling UI components."""
 
@@ -109,11 +129,9 @@ class InstructionsWindow(Window):
         self.closeSignal.emit()
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        if event.key() == QtCore.Qt.Key_Escape:
-            # Close when ESC is pressed
+        if checkCancelKey(event) or checkCloseKeyCombo(event):
             self.closeSignal.emit()
-        elif event.key() == QtCore.Qt.Key_Return or event.key() == QtCore.Qt.Key_Enter:
-            # Continue when ENTER/RETURN is pressed
+        elif checkContinueKey(event):
             self.continueSignal.emit()
         else:
             # Handle normal key presses
@@ -150,7 +168,7 @@ class InstructionsWindow(Window):
 
         title = Heading("Iris Software - Welcome")
         instructions = ProseText(
-            "Welcome to Iris Software - a program that allows you to control your computer with your eyes. Before being able to use the program, you'll go through a calibration process. After this calibration progress, the program will start. To move the mouse, move your eyes either up, down, left, or right of the boxes drawn around them to move in that direction. Return your eyes to the center of the boxes to stop moving the mouse. To perform a mouse click, simply perform an exaggerated blink with your eyes. If at any time you would like to exit the entire program, use the key combination CTRL + ESC.",
+            f"Welcome to Iris Software - a program that allows you to control your computer with your eyes. Before being able to use the program, you'll go through a calibration process.\n\nAfter this calibration progress, the program will start. To move the mouse, move your eyes either up, down, left, or right of the boxes drawn around them to move in that direction. Return your eyes to the center of the boxes to stop moving the mouse.\n\nTo perform a mouse click, simply perform an exaggerated blink with your eyes.\n\nIf at any time you would like to close a window, use the key combination [{MODIFIER_KEY}] + [W]. Closing all windows will exit the program.",
             True,
         )
 
@@ -209,7 +227,7 @@ class MainWindow(Window):
 
         self.menuButton = Button(f"Menu [{MODIFIER_KEY}] + [1]")
         self.menuButton.clicked.connect(self.openMenuSignal.emit)
-        self.closeButton = Button(f"Close [{MODIFIER_KEY}] + [E]")
+        self.closeButton = Button(f"Close [{MODIFIER_KEY}] + [W]")
         self.closeButton.clicked.connect(self.close)
 
         hLayout.addWidget(self.closeButton)
@@ -222,16 +240,9 @@ class MainWindow(Window):
         self.positionInTopRightCorner()
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        if event.keyCombination() == QtCore.QKeyCombination.fromCombined(
-            QtCore.Qt.CTRL | QtCore.Qt.Key_1
-        ):
-            # Open the menu when pressing CTRL/CMD + 1
+        if checkMenuKeyCombo(event):
             self.openMenuSignal.emit()
-        elif event.keyCombination() == QtCore.QKeyCombination.fromCombined(
-            QtCore.Qt.CTRL | QtCore.Qt.Key_E
-        ):
-            # Close the program when pressing CTRL/CMD + E
-            print("Close")
+        elif checkCloseKeyCombo(event):
             self.close()
         else:
             # Handle normal key presses
@@ -298,18 +309,11 @@ class CalibrationWindow(Window):
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         # If calibration has begun and the spacebar was pressed
-        if len(self.circles) == 0 and (
-            event.key() == QtCore.Qt.Key_Enter or event.key() == QtCore.Qt.Key_Return
-        ):
+        if len(self.circles) == 0 and checkContinueKey(event):
             self.__beginCalibration()
         if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
             self.captureEyeCoordsSignal.emit()
-        elif (
-            event.key() == QtCore.Qt.Key_Escape
-            or event.keyCombination()
-            == QtCore.QKeyCombination.fromCombined(QtCore.Qt.CTRL | QtCore.Qt.Key_E)
-        ):
-            # Exit on esc press or CTRL/CMD + E press
+        elif checkCancelKey(event) or checkCloseKeyCombo(event):
             self.cancelSignal.emit()
         else:
             # Handle other key presses
@@ -351,12 +355,11 @@ class CalibrationWindow(Window):
         layout = QVBoxLayout(instructionsWidget)
         layout.setSpacing(40)
         # Add title to layout
-        title = QLabel("Calibration", alignment=QtCore.Qt.AlignCenter)
-        title.setStyleSheet(f"font-size: {DesignTokens.fontSize4Xl};")
-        layout.addWidget(title)
+        title = Heading("Calibration")
+        layout.addWidget(title, alignment=QtCore.Qt.AlignHCenter)
         # Add instructions to layout
         instructions = QLabel(
-            "Welcome to the calibration process for Iris Software! When you click “Begin”, you will see a series of circles on the screen, with one of them highlighted.\n\nTo progress through calibration, you will need to look at the highlighted circle and then press the spacebar key while looking at the circle.\n\nRepeat this for each circle and then you will be done!",
+            "Welcome to the calibration process for Iris Software! When you click “Begin”, you will see a series of circles on the screen, with one of them highlighted.\n\nTo progress through calibration, you will need to look at the highlighted circle and then press the [SPACE] key while looking at the circle.\n\nRepeat this for each circle and then you will be done!",
             alignment=QtCore.Qt.AlignTop,
         )
         instructions.setMaximumWidth(DesignTokens.maxWidthProse)
@@ -742,10 +745,7 @@ class MenuWindow(Window):
         self.setCentralWidget(centralWidget)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        if event.keyCombination() == QtCore.QKeyCombination.fromCombined(
-            QtCore.Qt.CTRL | QtCore.Qt.Key_E
-        ):
-            # Close the program when pressing CTRL/CMD + E
+        if checkCloseKeyCombo(event):
             self.close()
         else:
             # Handle normal key presses
