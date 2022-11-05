@@ -17,6 +17,8 @@ import qimage2ndarray
 from numpy import ndarray
 from settings import loadSettings, PupilModelOptions
 
+MODIFIER_KEY = "CMD" if sys.platform == "darwin" else "CTRL"
+
 
 class DesignTokens:
     """Namespace for tokens used in styling UI components."""
@@ -97,6 +99,72 @@ class Window(QMainWindow):
         self.__setStyle()
 
 
+class InstructionsWindow(Window):
+    """Window for displaying instructions."""
+
+    closeSignal = QtCore.Signal()
+    continueSignal = QtCore.Signal()
+
+    def closeEvent(self, _) -> None:
+        self.closeSignal.emit()
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        if event.key() == QtCore.Qt.Key_Escape:
+            # Close when ESC is pressed
+            self.closeSignal.emit()
+        elif event.key() == QtCore.Qt.Key_Return or event.key() == QtCore.Qt.Key_Enter:
+            # Continue when ENTER/RETURN is pressed
+            self.continueSignal.emit()
+        else:
+            # Handle normal key presses
+            return super().keyPressEvent(event)
+
+    def __init__(self):
+        super().__init__()
+
+        self.continueButton: Button
+        self.closeButton: Button
+
+        self.__setupUI()
+
+    def __setupUI(self):
+        widget = QWidget()
+        horizontalLayout = QHBoxLayout(widget)
+        verticalLayout = QVBoxLayout()
+
+        horizontalLayout.addStretch()
+        horizontalLayout.addLayout(verticalLayout)
+        horizontalLayout.addStretch()
+        horizontalLayout.setContentsMargins(40, 40, 40, 40)
+
+        buttonLayout = QHBoxLayout()
+        self.continueButton = Button("Continue [ENTER]", variant="primary")
+        self.continueButton.clicked.connect(self.continueSignal.emit)
+        self.closeButton = Button("Close [ESC]")
+        self.closeButton.clicked.connect(self.closeSignal.emit)
+        buttonLayout.addStretch()
+        buttonLayout.addWidget(self.closeButton)
+        buttonLayout.addSpacing(20)
+        buttonLayout.addWidget(self.continueButton)
+        buttonLayout.addStretch()
+
+        title = Heading("Iris Software - Welcome")
+        instructions = ProseText(
+            "Welcome to Iris Software - a program that allows you to control your computer with your eyes. Before being able to use the program, you'll go through a calibration process. After this calibration progress, the program will start. To move the mouse, move your eyes either up, down, left, or right of the boxes drawn around them to move in that direction. Return your eyes to the center of the boxes to stop moving the mouse. To perform a mouse click, simply perform an exaggerated blink with your eyes. If at any time you would like to exit the entire program, use the key combination CTRL + ESC.",
+            True,
+        )
+
+        verticalLayout.addStretch()
+        verticalLayout.addWidget(title, alignment=QtCore.Qt.AlignHCenter)
+        verticalLayout.addSpacing(40)
+        verticalLayout.addWidget(instructions)
+        verticalLayout.addSpacing(40)
+        verticalLayout.addLayout(buttonLayout)
+        verticalLayout.addStretch()
+
+        self.setCentralWidget(widget)
+
+
 class MainWindow(Window):
     """Main widget showing the video stream in the corner."""
 
@@ -139,7 +207,7 @@ class MainWindow(Window):
         vLayout = QVBoxLayout(self.videoPreview)
         hLayout = QHBoxLayout()
 
-        self.menuButton = Button("Menu")
+        self.menuButton = Button(f"Menu [{MODIFIER_KEY}] + [1]")
         self.menuButton.clicked.connect(self.openMenuSignal.emit)
 
         hLayout.addStretch()
@@ -149,6 +217,16 @@ class MainWindow(Window):
 
         self.setCentralWidget(self.videoPreview)
         self.positionInTopRightCorner()
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        if event.keyCombination() == QtCore.QKeyCombination.fromCombined(
+            QtCore.Qt.CTRL | QtCore.Qt.Key_1
+        ):
+            # Open the menu when pressing CTRL/CMD + 1
+            self.openMenuSignal.emit()
+        else:
+            # Handle normal key presses
+            return super().keyPressEvent(event)
 
     def __init__(self, cameraResolution: tuple[int, int]):
         super().__init__()
@@ -210,13 +288,18 @@ class CalibrationWindow(Window):
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         # If calibration has begun and the spacebar was pressed
+        if len(self.circles) == 0 and (
+            event.key() == QtCore.Qt.Key_Enter or event.key() == QtCore.Qt.Key_Return
+        ):
+            self.__beginCalibration()
         if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
             self.captureEyeCoordsSignal.emit()
         elif event.key() == QtCore.Qt.Key_Escape:
             # Exit on esc press
             self.cancelSignal.emit()
-
-        return super().keyPressEvent(event)
+        else:
+            # Handle other key presses
+            return super().keyPressEvent(event)
 
     def __drawCircles(self):
         gridSize = 5
@@ -271,11 +354,11 @@ class CalibrationWindow(Window):
         layout.addWidget(buttonContainer, alignment=QtCore.Qt.AlignCenter)
         buttonContainerLayout = QHBoxLayout(buttonContainer)
         # Add cancel button to widget
-        cancelButton = Button("Cancel")
+        cancelButton = Button("Cancel [ESC]")
         cancelButton.clicked.connect(self.__cancelCalibration)
         buttonContainerLayout.addWidget(cancelButton)
         # Add begin button to widget
-        beginButton = Button("Begin", variant="primary")
+        beginButton = Button("Begin [ENTER]", variant="primary")
         beginButton.clicked.connect(self.__beginCalibration)
         buttonContainerLayout.addWidget(beginButton)
         # Set as the central widget
@@ -379,6 +462,22 @@ class Button(QPushButton):
         super().__init__(text=label, parent=parent)
 
         self.variant = variant
+
+        self.__setStyle()
+
+
+class Heading(QLabel):
+    """Text as a heading."""
+
+    def __setStyle(self):
+        self.setStyleSheet(
+            f"""
+            font-size: {DesignTokens.fontSize4Xl};
+            """
+        )
+
+    def __init__(self, text: str):
+        super().__init__(text)
 
         self.__setStyle()
 

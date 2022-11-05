@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QApplication
 from widgets import (
     MainWindow,
     CalibrationWindow,
+    InstructionsWindow,
     MenuWindow,
     PupilModelOptions,
     EYE_COLOR_THRESHOLD_RANGE,
@@ -41,6 +42,14 @@ class UI:
     def runInitialCalibration(self):
         self.__openCalibration(initial=True)
         print("Initial calibration running.")
+        return self.app.exec()
+
+    def runShowInstructions(self):
+        instructionsWindow = InstructionsWindow()
+        instructionsWindow.continueSignal.connect(self.__handleInstructionsContinue)
+        instructionsWindow.closeSignal.connect(self.__handleInstructionsClose)
+        instructionsWindow.show()
+        print("Show instructions running.")
         return self.app.exec()
 
     def run(self):
@@ -98,6 +107,14 @@ class UI:
 
     ### Signal handlers ###
 
+    @QtCore.Slot()
+    def __handleInstructionsClose(self):
+        self.app.exit(-1)
+
+    @QtCore.Slot()
+    def __handleInstructionsContinue(self):
+        self.app.exit()
+
     @QtCore.Slot(PupilModelOptions)
     def __handleChangePupilModel(self, value: PupilModelOptions):
         if hasattr(self, "onChangePupilModel"):
@@ -110,6 +127,8 @@ class UI:
 
     @QtCore.Slot()
     def __handleMenuOpen(self):
+        if hasattr(self, "menuWindow") and self.menuWindow is not None:
+            self.closeMenuWindow()
         self.menuWindow = MenuWindow()
         self.menuWindow.openCalibrationSignal.connect(self.__handleCalibrationOpen)
         self.menuWindow.changePupilModelSignal.connect(self.__handleChangePupilModel)

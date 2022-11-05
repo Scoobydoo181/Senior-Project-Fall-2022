@@ -138,16 +138,17 @@ class IrisSoftware:
 
             # Ensure that eyeCoords are found in each frame
             if len(currDetectedEyeCoords) >= int(framesToCapture * 0.8):
-                print(f"Initial configuration eye threshold: {i + 1}")
-                self.changeEyeColorThreshold(i + 1)
+                print(f"Initial configuration eye threshold: {i}")
+                self.changeEyeColorThreshold(i)
                 detectedPupils = True
                 break
 
+        # If we cannot determien the optimal value, set the threshold to a sensible default
         if not detectedPupils:
-            os.remove(SETTINGS_FILE_NAME)
-            raise Exception(
-                "Failed to detect any pupil data during initial configuration."
+            print(
+                "Failed to automatically find the best threshold, setting to default."
             )
+            self.changeEyeColorThreshold(2)
 
     def captureCalibrationEyeCoords(self):
         """Captures and stores a eye coords for calibration."""
@@ -263,6 +264,10 @@ class IrisSoftware:
     def run(self) -> None:
         """Launch threads and start program"""
         print("Starting Iris Software...")
+        # Show instructions
+        instructionsResult = self.ui.runShowInstructions()
+        if instructionsResult == -1:
+            sys.exit()
         # Handle initial settings
         if not os.path.exists(SETTINGS_FILE_NAME):
             print("Performing initial configuration...")
