@@ -171,8 +171,7 @@ class JoystickInterpolator():
             # print('Moving down')
             return pyautogui.position()[0], self.screenYMax
 
-    # what if both at same time? Make nested
-    # move laterally, not in a diamond
+    # what if both at same time? Make nested?
 
     def getLeftEyeBox(self):
         return (round(self.leftXMin), round(self.leftYMin)), (round(self.leftXMax), round(self.leftYMax))
