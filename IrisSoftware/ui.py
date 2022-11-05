@@ -59,16 +59,19 @@ class UI:
         return self.app.exec()
 
     def closeCalibrationWindow(self):
-        self.calibrationWindow.close()
-        self.calibrationWindow = None
+        if hasattr(self, "calibrationWindow") and self.calibrationWindow is not None:
+            self.calibrationWindow.close()
+            self.calibrationWindow = None
 
     def closeMenuWindow(self):
-        self.menuWindow.close()
-        self.menuWindow = None
+        if hasattr(self, "menuWindow") and self.menuWindow is not None:
+            self.menuWindow.close()
+            self.menuWindow = None
 
     def closeMainWindow(self):
-        self.mainWindow.close()
-        self.mainWindow = None
+        if hasattr(self, "mainWindow") and self.mainWindow is not None:
+            self.mainWindow.close()
+            self.mainWindow = None
 
     def emitCameraFrame(self, frame):
         if self.mainWindow is not None:
@@ -127,8 +130,7 @@ class UI:
 
     @QtCore.Slot()
     def __handleMenuOpen(self):
-        if hasattr(self, "menuWindow") and self.menuWindow is not None:
-            self.closeMenuWindow()
+        self.closeMenuWindow()
         self.menuWindow = MenuWindow()
         self.menuWindow.openCalibrationSignal.connect(self.__handleCalibrationOpen)
         self.menuWindow.changePupilModelSignal.connect(self.__handleChangePupilModel)
@@ -139,13 +141,12 @@ class UI:
 
     @QtCore.Slot()
     def __handleCalibrationOpen(self):
+        self.closeMenuWindow()
         self.closeMainWindow()
-        self.menuWindow.showMinimized()
         self.__openCalibration()
 
     @QtCore.Slot()
     def __handleCalibrationCancelInitial(self):
-        self.closeCalibrationWindow()
         self.app.exit(-1)
 
     @QtCore.Slot()
@@ -156,7 +157,6 @@ class UI:
         self.closeCalibrationWindow()
         self.__createMainWindow()
         self.mainWindow.showNormal()
-        self.menuWindow.showNormal()
 
     @QtCore.Slot()
     def __handleCalibrationCompleteInitial(self):
@@ -174,7 +174,6 @@ class UI:
         self.closeCalibrationWindow()
         self.__createMainWindow()
         self.mainWindow.showNormal()
-        self.menuWindow.showNormal()
 
     @QtCore.Slot()
     def __handleCalibrationCaptureEyeCoords(self):

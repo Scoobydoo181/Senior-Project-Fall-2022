@@ -209,7 +209,10 @@ class MainWindow(Window):
 
         self.menuButton = Button(f"Menu [{MODIFIER_KEY}] + [1]")
         self.menuButton.clicked.connect(self.openMenuSignal.emit)
+        self.closeButton = Button(f"Close [{MODIFIER_KEY}] + [E]")
+        self.closeButton.clicked.connect(self.close)
 
+        hLayout.addWidget(self.closeButton)
         hLayout.addStretch()
         hLayout.addWidget(self.menuButton)
         vLayout.addLayout(hLayout)
@@ -224,6 +227,12 @@ class MainWindow(Window):
         ):
             # Open the menu when pressing CTRL/CMD + 1
             self.openMenuSignal.emit()
+        elif event.keyCombination() == QtCore.QKeyCombination.fromCombined(
+            QtCore.Qt.CTRL | QtCore.Qt.Key_E
+        ):
+            # Close the program when pressing CTRL/CMD + E
+            print("Close")
+            self.close()
         else:
             # Handle normal key presses
             return super().keyPressEvent(event)
@@ -237,6 +246,7 @@ class MainWindow(Window):
         self.videoPreview: QLabel = None
         self.calibrateButton: Button = None
         self.menuButton: Button = None
+        self.closeButton: Button = None
 
         # Remove window title
         self.setWindowTitle("Iris Software")
@@ -294,8 +304,12 @@ class CalibrationWindow(Window):
             self.__beginCalibration()
         if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
             self.captureEyeCoordsSignal.emit()
-        elif event.key() == QtCore.Qt.Key_Escape:
-            # Exit on esc press
+        elif (
+            event.key() == QtCore.Qt.Key_Escape
+            or event.keyCombination()
+            == QtCore.QKeyCombination.fromCombined(QtCore.Qt.CTRL | QtCore.Qt.Key_E)
+        ):
+            # Exit on esc press or CTRL/CMD + E press
             self.cancelSignal.emit()
         else:
             # Handle other key presses
@@ -726,3 +740,13 @@ class MenuWindow(Window):
         layout.addStretch()
 
         self.setCentralWidget(centralWidget)
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        if event.keyCombination() == QtCore.QKeyCombination.fromCombined(
+            QtCore.Qt.CTRL | QtCore.Qt.Key_E
+        ):
+            # Close the program when pressing CTRL/CMD + E
+            self.close()
+        else:
+            # Handle normal key presses
+            return super().keyPressEvent(event)
