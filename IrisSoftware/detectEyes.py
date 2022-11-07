@@ -61,6 +61,9 @@ class EyeDetection:
         self.blobThreshold = 45
         self.numBlurIterations = 7
 
+        self.blinkCounter = 0
+        self.minBlinkDuration = 40
+
     def setDetectionType(self, detectionType):
         '''Set the detection type to the specified enum value'''
         self.detectionType = detectionType
@@ -86,11 +89,25 @@ class EyeDetection:
         Increasing this value will reduce the amount of noise in the detection image, and enlarge the pupil area.'''
         self.numBlurIterations = numIterations
 
+    def setMinBlinkDuration(self, dur):
+        '''Set the number of frames of no detected pupils before a blink is detected'''
+        self.minBlinkDuration = dur
+
     def detectFace(self, image):
         '''Detect a face in the image'''
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         faces = self.faceDetector.detectMultiScale(gray)
         return max(faces, key=lambda box: box[2]*box[3]) if len(faces) > 0 else None
+
+    def detectBlink(self, eyeCoords):
+        if len(eyeCoords) < 2:
+            self.blinkCounter += 1
+
+        if self.blinkCounter >= self.minBlinkDuration:
+            self.blinkCounter = 0
+            return True
+        else:
+            return False
 
     @filterFalsePositives
     def detectEyes(self, image):
@@ -111,13 +128,13 @@ class EyeDetection:
     def eyeCascadeDetector(self, image):
         '''Detect eyes using a single Haar cascade detector'''
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        return self.eyeDetector.detectMultiScale(gray)
+        return sorted(self.eyeDetector.detectMultiScale(gray), key=lambda eye: eye[0])
 
     def eyeCascadeBlobDetector(self, image):
         '''Detect eyes using a Haar cascade detector and blob detection'''
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        eyes = self.eyeDetector.detectMultiScale(gray)
+        eyes = sorted(self.eyeDetector.detectMultiScale(gray), key = lambda eye: eye[0])
         croppedEyes = [gray[y:y+h, x:x+w] for (x, y, w, h) in eyes]
 
         eyes_bw = [cv2.threshold(eye, self.blobThreshold, 255, cv2.THRESH_BINARY)[1]
@@ -148,7 +165,7 @@ class EyeDetection:
         faceX, faceY, faceW, faceH = face
         croppedFace = gray[faceY:faceY+faceH, faceX:faceX+faceW]
 
-        eyes = self.eyeDetector.detectMultiScale(croppedFace)
+        eyes = sorted(self.eyeDetector.detectMultiScale(croppedFace), key = lambda eye: eye[0])
 
         return [tupleAdd((x+w/2, y+h/2), faceX, faceY) for (x, y, w, h) in eyes]
 
@@ -176,7 +193,7 @@ class EyeDetection:
             cv2.waitKey()
             cv2.imwrite(f"image3_croppedFace.jpg", croppedFace)
 
-        eyes = self.eyeDetector.detectMultiScale(croppedFace)
+        eyes = sorted(self.eyeDetector.detectMultiScale(croppedFace), key = lambda eye: eye[0])
         croppedEyes = [croppedFace[y:y+h, x:x+w] for (x, y, w, h) in eyes]
         if demo:
             for i, eye in enumerate(croppedEyes):
@@ -233,9 +250,11 @@ def testRealtimeEyeDetection():
         # if len(eyes) == 0:
         #     print("No eyes detected")
 
-        for eye in eyes:
-            if len(eye) == 2:
-                cv2.circle(image, (eye[0], eye[1]), 7, (0, 0, 255), 2)
+        for i, eye in enumerate(eyes):
+            if i == 0:
+                cv2.circle(image, (eye[0], eye[1]), 7, (255, 0, 0), 2)
+            elif i == 1:
+                cv2.circle(image, (eye[0], eye[1]), 7, (0, 255, 0), 2)
         cv2.imshow("Eyes", image)
         if cv2.waitKey(delay=1) & 0xFF == ord('q'):
             break

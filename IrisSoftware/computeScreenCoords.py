@@ -171,16 +171,24 @@ class JoystickInterpolator():
             # print('Moving down')
             return pyautogui.position()[0], self.screenYMax
 
-    # what if both at same time? Make nested
-    # move laterally, not in a diamond
+    # what if both at same time? Make nested?
+
+    def getLeftEyeBox(self):
+        return (round(self.leftXMin), round(self.leftYMin)), (round(self.leftXMax), round(self.leftYMax))
+
+    def getRightEyeBox(self):
+        return (round(self.rightXMin), round(self.rightYMin)), (round(self.rightXMax), round(self.rightYMax))
 
 class Interpolator():
     def __init__(self):
         self.interpolator = None
+        self.interpType = None
 
     def calibrateInterpolatorManual(self, eyeCoords: list[list[tuple]], screenCoords: list[tuple], interpType = InterpolationType.LINEAR_REGRESSION):
         # eyeCoords of shape [[(x1.1,y1.1),(x1.2,y1.2)], [(x2.1,y2.1, x2.2, y2.2)], etc.]
         # screenCoords of shape [(x1,y1), (x2,y2), (x3,y3), etc]
+        self.interpType = interpType
+
         if interpType == InterpolationType.LINEAR:
             unpackedEyeCoords = unpackEyeCoords(eyeCoords)
             unpackedXScreenCoords, unpackedYScreenCoords = unpackScreenCoords(screenCoords)
@@ -209,6 +217,14 @@ class Interpolator():
         if self.interpolator is None:
             raise ValueError('Error calibrating interpolator.')
         return self.interpolator.computeScreenCoords(eyeCoords)
+
+    def getLeftEyeBox(self):
+        if self.interpType == InterpolationType.JOYSTICK:
+            return self.interpolator.getLeftEyeBox()
+
+    def getRightEyeBox(self):
+        if self.interpType == InterpolationType.JOYSTICK:
+            return self.interpolator.getRightEyeBox()
 
 if __name__ == '__main__':
     leftEyeXData = []

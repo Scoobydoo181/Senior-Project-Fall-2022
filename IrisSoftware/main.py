@@ -21,6 +21,7 @@ class IrisSoftware:
         def __init__(self) -> None:
             self.shouldExit = False
             self.isCalibrated = False
+            self.currentlyCalibrating = False
             self.calibrationEyeCoords: list[list[tuple]] = []
             self.faceBoxes = []
             self.faceBox = None
@@ -57,9 +58,6 @@ class IrisSoftware:
                 CALIBRATION_FILE_NAME, self.state.interpolatorType
             )
             self.state.isCalibrated = True
-
-    def detectBlink(self, eyeCoords, blinkDuration) -> any:
-        pass
 
     def moveMouse(self, screenX, screenY):
         """Move the mouse to the given screen coordinates, moving smoothly over multiple frames"""
@@ -99,7 +97,7 @@ class IrisSoftware:
 
         self.settings.eyeColorThreshold = value
         transformedValue = step * (value)
-        print(transformedValue)
+        print("Set detection threshold: ", transformedValue)
         self.eyeDetector.setBlobThreshold(transformedValue)
         saveSettings(self.settings)
 
@@ -117,6 +115,7 @@ class IrisSoftware:
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
+        self.state.currentlyCalibrating = False
         print("Reset current calibration eye coords.")
 
     def performInitialConfiguration(self):
@@ -151,6 +150,9 @@ class IrisSoftware:
 
     def captureCalibrationEyeCoords(self):
         """Captures and stores a eye coords for calibration."""
+        # not best spot to set currently calibrating to true, ideally should be another signal that is called under __openCalibration in ui.py or in calibrationwindow widget initialization
+        self.state.currentlyCalibrating = True
+
         eyeCoords = []
         maxFramesToCapture = 30
 
@@ -216,14 +218,18 @@ class IrisSoftware:
 
         print("Saved new calibration data.")
 
+        # Train screen coords model
+        self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, self.state.interpolatorType)
+
         # Reset current calibration frames
         self.resetCalibrationEyeCoords()
-
-        # TODO: train screen coords model
 
     def processing(self):
         """Thread to run main loop of eye detection"""
         while not self.state.shouldExit:
+            if self.state.currentlyCalibrating:
+                continue
+            
             # Get the camera frame
             frame = self.camera.getFrame()
 
@@ -240,21 +246,30 @@ class IrisSoftware:
                 frame, (faceX, faceY), (faceX + faceW, faceY + faceH), (0, 0, 255), 2
             )
 
+            if self.state.interpolatorType == InterpolationType.JOYSTICK:
+                # Draw the eye boxes for Joystick mode
+                topLeft, bottomRight = self.interpolator.getLeftEyeBox()
+                frame = cv2.rectangle(frame, topLeft, bottomRight, (0, 0, 255), 2)
+
+                topLeft, bottomRight = self.interpolator.getRightEyeBox()
+                frame = cv2.rectangle(frame, topLeft, bottomRight, (0, 0, 255), 2)
+
             # Pass the frame to the UI
             self.ui.emitCameraFrame(frame)
 
             # # Check for blinks
-            # didBlink = self.detectBlink(eyeCoords, self.blinkDuration)
+            didBlink = self.eyeDetector.detectBlink(eyeCoords)
 
             # # Determine screen coordinates from eye coordinates
             screenX, screenY = self.safeComputeCoords(eyeCoords)
 
             # # Click the mouse if the user has blinked
-            # if didBlink:
-            #     clickMouse(screenX, screenY)
+            if didBlink:
+                print("Blink detected")
+                pyautogui.click()
 
             # # Move the mouse based on the eye coordinates
-            # self.moveMouse(screenX, screenY)
+            self.moveMouse(screenX, screenY)
             self.state.skipMouseMovement = False
 
         # Release the camera before exiting
@@ -273,7 +288,7 @@ class IrisSoftware:
             result = self.ui.runInitialCalibration()
             if result == -1:
                 sys.exit()
-            self.interpolator.calibrateInterpolator()
+            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, self.state.interpolatorType)
             self.state.isCalibrated = True
         # Spawn the processing thread
         print("Launching processing thread...")
