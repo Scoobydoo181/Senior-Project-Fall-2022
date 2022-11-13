@@ -261,8 +261,6 @@ class MainWindow(Window):
 
         # Remove window title
         self.setWindowTitle("Iris Software")
-        # Set window always on top
-        self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
 
         # Initialize
         self.__setupUI()
