@@ -440,6 +440,7 @@ class CalibrationCircle(QPushButton):
 
         self.setFixedSize(DesignTokens.circleBaseSize, DesignTokens.circleBaseSize)
         self.__setStyle()
+        self.setHidden()
 
 
 class Button(QPushButton):
