@@ -51,6 +51,7 @@ class IrisSoftware:
         self.ui.onCalibrationCancel = self.resetCalibrationEyeCoords
         self.ui.onChangePupilModel = self.changePupilModel
         self.ui.onChangeEyeColorThreshold = self.changeEyeColorThreshold
+        self.ui.onCalibrationOpen = self.setCurrentlyCalibrating
 
         self.processingThread: threading.Thread
 
@@ -122,7 +123,7 @@ class IrisSoftware:
 
     def resetCalibrationEyeCoords(self):
         self.state.calibrationEyeCoords = []
-        self.state.currentlyCalibrating = False
+        self.unsetCurrentlyCalibrating()
         print("Reset current calibration eye coords.")
 
     def captureCalibrationEyeCoords(self):
@@ -200,6 +201,8 @@ class IrisSoftware:
             CALIBRATION_FILE_NAME, self.state.interpolatorType
         )
 
+        self.state.isCalibrated = True
+
         # Reset current calibration frames
         self.resetCalibrationEyeCoords()
 
@@ -231,6 +234,14 @@ class IrisSoftware:
             frame = cv2.rectangle(frame, topLeft, bottomRight, white, thickness)
 
         return frame
+
+    def setCurrentlyCalibrating(self):
+        self.processingSem.acquire()
+        self.state.currentlyCalibrating = True
+
+    def unsetCurrentlyCalibrating(self):
+        self.state.currentlyCalibrating = False
+        self.processingSem.release()
 
     def processing(self):
         """Thread to run main loop of eye detection"""
@@ -296,19 +307,10 @@ class IrisSoftware:
         # Handle initial calibration
         if not self.state.isCalibrated:
             print("Calibrating program...")
-            self.processingSem.acquire()
-            self.state.currentlyCalibrating = True
             result = self.ui.runInitialCalibration()
             if result == -1:
                 self.state.shouldExit = True
-                self.processingSem.release()
                 sys.exit()
-            self.interpolator.calibrateInterpolator(
-                CALIBRATION_FILE_NAME, self.state.interpolatorType
-            )
-            self.state.isCalibrated = True
-            self.state.currentlyCalibrating = False
-            self.processingSem.release()
         # Run the UI
         print("Launching the UI...")
         self.ui.run()

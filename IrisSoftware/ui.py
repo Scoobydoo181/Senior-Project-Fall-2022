@@ -36,6 +36,7 @@ class UI:
         self.initialConfigWindow: InitialConfigWindow = None
         # Create callback properties
         self.onCaptureCalibrationEyeCoords: callable
+        self.onCalibrationOpen: callable
         self.onCalibrationCancel: callable
         self.onCalibrationComplete: callable
         self.onChangePupilModel: callable
@@ -126,6 +127,8 @@ class UI:
         self.calibrationWindow.captureEyeCoordsSignal.connect(
             self.__handleCalibrationCaptureEyeCoords
         )
+        if hasattr(self, "onCalibrationOpen") and self.onCalibrationOpen is not None:
+            self.onCalibrationOpen()
         # Show the window
         self.calibrationWindow.showFullScreen()
 
@@ -177,6 +180,8 @@ class UI:
 
     @QtCore.Slot()
     def __handleCalibrationCancelInitial(self):
+        if hasattr(self, "onCalibrationCancel"):
+            self.onCalibrationCancel()
         self.app.exit(-1)
 
     @QtCore.Slot()
