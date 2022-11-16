@@ -263,7 +263,8 @@ def testRealtimeEyeDetection():
 
 
 def testDemoBlobDetection():
-    '''Run blob detection in demo mode to visualize each step of the process'''
+    '''Run blob detection in demo mode to visualize each step of the process.
+    Requires testTakePicture() to be run first to generate the image file'''
     image = cv2.imread("sampleFace.jpg")
 
     eyeDetection = EyeDetection()
@@ -280,7 +281,8 @@ def testTakePicture():
     camera.release()
 
 def testPupilBlobDetection():
-    '''Test the blob detection algorithm in isolation on extracted black and white eye images'''
+    '''Test the blob detection algorithm in isolation on extracted black and white eye images.
+    Requires testDemoBlobDetection() to be run first to generate the images'''
     image = cv2.imread("pupil0.jpg")
     cv2.imshow("Eye", image)
     cv2.waitKey();
@@ -300,9 +302,25 @@ def testPupilBlobDetection():
     cv2.imshow("Blob detected", detected)
     cv2.waitKey()
 
+def testLeftRightEyeDetection():
+    '''Test that the left and right eyes are returned in the right order.
+    Requires testTakePicture() to have been run first'''
+    image = cv2.imread("sampleFace.jpg")
+
+    eyeDetection = EyeDetection()
+
+    eyes = eyeDetection.detectEyes(image)
+
+    if len(eyes) == 2:
+        print("Both eyes detected")
+        assert(eyes[0][0] < eyes[1][0])
+    
+    print("Test passed")
+
 
 if __name__ == "__main__":
     testRealtimeEyeDetection()
     # testTakePicture()
     # testDemoBlobDetection()
     # testPupilBlobDetection()
+    # testLeftRightEyeDetection()
