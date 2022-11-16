@@ -220,56 +220,68 @@ class IrisSoftware:
         print("Saved new calibration data.")
 
         # Train screen coords model
-        self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, self.state.interpolatorType)
+        self.interpolator.calibrateInterpolator(
+            CALIBRATION_FILE_NAME, self.state.interpolatorType
+        )
 
         # Reset current calibration frames
         self.resetCalibrationEyeCoords()
+
+    def drawOnFrame(self, frame, eyeCoords):
+        thickness = 3
+        blue600 = (216, 78, 29)  # G,B,R
+        white = (255, 255, 255)  # G,B,R
+
+        # Draw circles around the eyes
+        for (x, y) in eyeCoords:
+            frame = cv2.circle(frame, (x, y), 10, blue600, thickness)
+
+        # Draw the face box
+        faceX, faceY, faceW, faceH = self.state.faceBox
+        frame = cv2.rectangle(
+            frame, (faceX, faceY), (faceX + faceW, faceY + faceH), white, thickness
+        )
+
+        if self.state.interpolatorType == InterpolationType.JOYSTICK:
+            # Draw the eye boxes for Joystick mode
+            topLeft, bottomRight = self.interpolator.getLeftEyeBox()
+            frame = cv2.rectangle(frame, topLeft, bottomRight, white, thickness)
+
+            topLeft, bottomRight = self.interpolator.getRightEyeBox()
+            frame = cv2.rectangle(frame, topLeft, bottomRight, white, thickness)
+
+        return frame
 
     def processing(self):
         """Thread to run main loop of eye detection"""
         while not self.state.shouldExit:
             if self.state.currentlyCalibrating:
                 continue
-            
+
             # Get the camera frame
             frame = self.camera.getFrame()
 
             # Get eye coordinates
             eyeCoords = self.eyeDetector.detectEyes(frame)
 
-            # Draw circles around the eyes
-            for (x, y) in eyeCoords:
-                cv2.circle(frame, (x, y), 7, (0, 0, 255), 2)
-
-            # Draw the face box
-            faceX, faceY, faceW, faceH = self.state.faceBox
-            frame = cv2.rectangle(
-                frame, (faceX, faceY), (faceX + faceW, faceY + faceH), (0, 0, 255), 2
-            )
-
-            if self.state.interpolatorType == InterpolationType.JOYSTICK:
-                # Draw the eye boxes for Joystick mode
-                topLeft, bottomRight = self.interpolator.getLeftEyeBox()
-                frame = cv2.rectangle(frame, topLeft, bottomRight, (0, 0, 255), 2)
-
-                topLeft, bottomRight = self.interpolator.getRightEyeBox()
-                frame = cv2.rectangle(frame, topLeft, bottomRight, (0, 0, 255), 2)
+            # Draw borders on the frame
+            frame = self.drawOnFrame(frame, eyeCoords)
 
             # Pass the frame to the UI
             self.ui.emitCameraFrame(frame)
 
-            # # Check for blinks
+            # Check for blinks
             didBlink = self.eyeDetector.detectBlink(eyeCoords)
 
-            # # Determine screen coordinates from eye coordinates
+            # Determine screen coordinates from eye coordinates
             screenX, screenY = self.safeComputeCoords(eyeCoords)
 
-            # # Click the mouse if the user has blinked
+            # Click the mouse if the user has blinked
             if didBlink:
                 print("Blink detected")
                 pyautogui.click()
 
-            # # Move the mouse based on the eye coordinates
+            # Move the mouse based on the eye coordinates
             self.moveMouse(screenX, screenY)
             self.state.skipMouseMovement = False
 
@@ -293,7 +305,9 @@ class IrisSoftware:
             result = self.ui.runInitialCalibration()
             if result == -1:
                 sys.exit()
-            self.interpolator.calibrateInterpolator(CALIBRATION_FILE_NAME, self.state.interpolatorType)
+            self.interpolator.calibrateInterpolator(
+                CALIBRATION_FILE_NAME, self.state.interpolatorType
+            )
             self.state.isCalibrated = True
         # Spawn the processing thread
         print("Launching processing thread...")
