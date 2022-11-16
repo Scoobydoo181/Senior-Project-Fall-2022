@@ -296,6 +296,7 @@ class CalibrationWindow(Window):
         else:
             self.activeCircleIndex += 1
             self.circles[self.activeCircleIndex].toggleActive()
+            self.preventSpacebarPress = False
 
     def getCircleLocations(self):
         locs = []
@@ -309,7 +310,12 @@ class CalibrationWindow(Window):
         # If calibration has begun and the spacebar was pressed
         if len(self.circles) == 0 and checkContinueKey(event):
             self.__beginCalibration()
-        if self.activeCircleIndex is not None and event.key() == QtCore.Qt.Key_Space:
+        if (
+            self.activeCircleIndex is not None
+            and self.preventSpacebarPress is False
+            and event.key() == QtCore.Qt.Key_Space
+        ):
+            self.preventSpacebarPress = True
             self.captureEyeCoordsSignal.emit()
         elif checkCancelKey(event) or checkCloseKeyCombo(event):
             self.cancelSignal.emit()
@@ -388,6 +394,7 @@ class CalibrationWindow(Window):
         # Set up attributes
         self.activeCircleIndex: int = 0
         self.circles: list[CalibrationCircle] = []
+        self.preventSpacebarPress = False
 
         self.finishedCaptureEyeCoordsSignal.connect(self.__progressCalibration)
 
@@ -440,6 +447,7 @@ class CalibrationCircle(QPushButton):
 
         self.setFixedSize(DesignTokens.circleBaseSize, DesignTokens.circleBaseSize)
         self.__setStyle()
+        self.setHidden()
 
 
 class Button(QPushButton):
