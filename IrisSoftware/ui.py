@@ -9,6 +9,7 @@ from widgets import (
     MenuWindow,
     PupilModelOptions,
     EYE_COLOR_THRESHOLD_RANGE,
+    InitialConfigWindow,
 )
 from PySide6 import QtCore, QtGui
 
@@ -31,6 +32,7 @@ class UI:
         self.mainWindow: MainWindow
         self.calibrationWindow: CalibrationWindow
         self.menuWindow: MenuWindow
+        self.initialConfigWindow: InitialConfigWindow
         # Create callback properties
         self.onCaptureCalibrationEyeCoords: callable
         self.onCalibrationCancel: callable
@@ -50,6 +52,15 @@ class UI:
         instructionsWindow.closeSignal.connect(self.__handleInstructionsClose)
         instructionsWindow.show()
         print("Show instructions running.")
+        return self.app.exec()
+
+    def runInitialConfiguration(self):
+        self.initialConfigWindow = InitialConfigWindow(self.cameraResolution)
+        self.initialConfigWindow.changeEyeColorThresholdSignal.connect(
+            self.onChangeEyeColorThreshold
+        )
+        self.initialConfigWindow.show()
+        print("Initial configuration running.")
         return self.app.exec()
 
     def run(self):
@@ -74,6 +85,8 @@ class UI:
             self.mainWindow = None
 
     def emitCameraFrame(self, frame):
+        if self.initialConfigWindow is not None:
+            self.initialConfigWindow.cameraFrameSignal.emit(frame)
         if self.mainWindow is not None:
             self.mainWindow.cameraFrameSignal.emit(frame)
 

@@ -236,6 +236,10 @@ class IrisSoftware:
         for (x, y) in eyeCoords:
             frame = cv2.circle(frame, (x, y), 10, blue600, thickness)
 
+        if not self.state.isCalibrated:
+            # Do not continue drawing data that requires calibration without being calibrated
+            return
+
         # Draw the face box
         faceX, faceY, faceW, faceH = self.state.faceBox
         frame = cv2.rectangle(
@@ -269,6 +273,10 @@ class IrisSoftware:
 
             # Pass the frame to the UI
             self.ui.emitCameraFrame(frame)
+
+            if not self.state.isCalibrated:
+                # Do not run code that requires the program to be calibrated
+                continue
 
             # Check for blinks
             didBlink = self.eyeDetector.detectBlink(eyeCoords)
