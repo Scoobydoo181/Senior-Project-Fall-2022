@@ -10,6 +10,7 @@ from widgets import (
     PupilModelOptions,
     EYE_COLOR_THRESHOLD_RANGE,
     InitialConfigWindow,
+    DEFAULT_EYE_COLOR_THRESHOLD,
 )
 from PySide6 import QtCore, QtGui
 
@@ -32,7 +33,7 @@ class UI:
         self.mainWindow: MainWindow
         self.calibrationWindow: CalibrationWindow
         self.menuWindow: MenuWindow
-        self.initialConfigWindow: InitialConfigWindow
+        self.initialConfigWindow: InitialConfigWindow = None
         # Create callback properties
         self.onCaptureCalibrationEyeCoords: callable
         self.onCalibrationCancel: callable
@@ -59,7 +60,11 @@ class UI:
         self.initialConfigWindow.changeEyeColorThresholdSignal.connect(
             self.onChangeEyeColorThreshold
         )
-        self.initialConfigWindow.show()
+        self.initialConfigWindow.continueSignal.connect(
+            self.__handleInitialConfigContinue
+        )
+        self.initialConfigWindow.closeSignal.connect(self.__handleInitialConfigClose)
+        self.initialConfigWindow.showFullScreen()
         print("Initial configuration running.")
         return self.app.exec()
 
@@ -85,9 +90,12 @@ class UI:
             self.mainWindow = None
 
     def emitCameraFrame(self, frame):
-        if self.initialConfigWindow is not None:
+        if (
+            hasattr(self, "initialConfigWindow")
+            and self.initialConfigWindow is not None
+        ):
             self.initialConfigWindow.cameraFrameSignal.emit(frame)
-        if self.mainWindow is not None:
+        if hasattr(self, "mainWindow") and self.mainWindow is not None:
             self.mainWindow.cameraFrameSignal.emit(frame)
 
     def emitFinishedCaptureEyeCoords(self):
@@ -122,6 +130,15 @@ class UI:
         self.calibrationWindow.showFullScreen()
 
     ### Signal handlers ###
+
+    @QtCore.Slot()
+    def __handleInitialConfigClose(self):
+        self.app.exit(-1)
+
+    @QtCore.Slot()
+    def __handleInitialConfigContinue(self):
+        self.initialConfigWindow = None
+        self.app.exit()
 
     @QtCore.Slot()
     def __handleInstructionsClose(self):

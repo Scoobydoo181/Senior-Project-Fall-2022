@@ -19,6 +19,7 @@ from numpy import ndarray
 from settings import loadSettings, PupilModelOptions
 
 EYE_COLOR_THRESHOLD_RANGE = (0, 20)
+DEFAULT_EYE_COLOR_THRESHOLD = 6
 MODIFIER_KEY = "CMD" if sys.platform == "darwin" else "CTRL"
 CURSOR_MOVEMENT_GIF_PATH = str(pathlib.Path("./resources/CursorMovement.gif").resolve())
 
@@ -41,6 +42,14 @@ def checkCancelKey(event: QtGui.QKeyEvent):
 
 def checkContinueKey(event: QtGui.QKeyEvent):
     return event.key() == QtCore.Qt.Key_Enter or event.key() == QtCore.Qt.Key_Return
+
+
+def checkIncreaseArrowKey(event: QtGui.QKeyEvent):
+    return event.key() == QtCore.Qt.Key_Right or event.key() == QtCore.Qt.Key_Up
+
+
+def checkDecreaseArrowKey(event: QtGui.QKeyEvent):
+    return event.key() == QtCore.Qt.Key_Left or event.key() == QtCore.Qt.Key_Down
 
 
 def calculatePreviewSize(cameraResolution: tuple[int]) -> QtCore.QSize:
@@ -146,6 +155,24 @@ class InitialConfigWindow(Window):
 
     changeEyeColorThresholdSignal = QtCore.Signal(int)
     cameraFrameSignal = QtCore.Signal(ndarray)
+    closeSignal = QtCore.Signal()
+    continueSignal = QtCore.Signal()
+
+    def closeEvent(self, _) -> None:
+        self.closeSignal.emit()
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        if checkCancelKey(event) or checkCloseKeyCombo(event):
+            self.closeSignal.emit()
+        elif checkContinueKey(event):
+            self.continueSignal.emit()
+        elif checkIncreaseArrowKey(event):
+            self.eyeColorSlider.increment()
+        elif checkDecreaseArrowKey(event):
+            self.eyeColorSlider.decrement()
+        else:
+            # Handle normal key presses
+            return super().keyPressEvent(event)
 
     @QtCore.Slot(ndarray)
     def __updatePreview(self, frame):
@@ -157,8 +184,25 @@ class InitialConfigWindow(Window):
         preview.setFixedSize(self.previewSize)
         return preview
 
-    def __getEyeColorSection(self):
-        return EyeColorThresholdSlider(0, self.changeEyeColorThresholdSignal.emit)
+    def __getEyeColorSlider(self):
+        return EyeColorThresholdSlider(
+            DEFAULT_EYE_COLOR_THRESHOLD, self.changeEyeColorThresholdSignal.emit
+        )
+
+    def __getButtons(self):
+        closeButton = Button("Close [ESC]")
+        continueButton = Button("Continue [ENTER]", variant="primary")
+        closeButton.clicked.connect(self.closeSignal)
+        continueButton.clicked.connect(self.continueSignal)
+
+        layout = QHBoxLayout()
+        layout.addStretch()
+        layout.addWidget(closeButton)
+        layout.addSpacing(20)
+        layout.addWidget(continueButton)
+        layout.addStretch()
+
+        return layout
 
     def __setupUI(self):
         title = Heading("Configuration")
@@ -167,18 +211,28 @@ class InitialConfigWindow(Window):
             True,
         )
         self.preview = self.__getPreview()
-        eyeColorSection = self.__getEyeColorSection()
+        self.eyeColorSlider = self.__getEyeColorSlider()
+        buttons = self.__getButtons()
+
+        previewSliderLayout = QVBoxLayout()
+        previewSliderLayout.addWidget(self.preview)
+        previewSliderLayout.addWidget(self.eyeColorSlider)
+
+        instructionsPreviewLayout = QHBoxLayout()
+        instructionsPreviewLayout.addStretch()
+        instructionsPreviewLayout.addWidget(instructions)
+        instructionsPreviewLayout.addLayout(previewSliderLayout)
+        instructionsPreviewLayout.addStretch()
 
         container = QWidget()
         verticalLayout = QVBoxLayout(container)
         verticalLayout.addStretch()
         verticalLayout.addWidget(title, alignment=QtCore.Qt.AlignHCenter)
         verticalLayout.addSpacing(20)
-        verticalLayout.addWidget(instructions, alignment=QtCore.Qt.AlignHCenter)
-        verticalLayout.addSpacing(40)
-        verticalLayout.addWidget(self.preview, alignment=QtCore.Qt.AlignHCenter)
+        verticalLayout.addLayout(instructionsPreviewLayout)
         verticalLayout.addSpacing(20)
-        verticalLayout.addWidget(eyeColorSection, alignment=QtCore.Qt.AlignHCenter)
+        verticalLayout.addLayout(buttons)
+        verticalLayout.addStretch()
 
         self.setCentralWidget(container)
 
@@ -698,6 +752,12 @@ class SelectionGroup(QWidget):
 class EyeColorThresholdSlider(QWidget):
     """Slider for eye color threshold."""
 
+    def increment(self):
+        self.slider.setValue(self.slider.value() + 1)
+
+    def decrement(self):
+        self.slider.setValue(self.slider.value() - 1)
+
     def __handleChange(self, value: int):
         if hasattr(self, "onChange") and self.onChange is not None:
             self.onChange(value)
@@ -728,6 +788,7 @@ class EyeColorThresholdSlider(QWidget):
         self.onChange = onChange
         self.__setupUI(value)
         self.slider.valueChanged.connect(self.__handleChange)
+        self.__handleChange(value)
 
 
 class MenuWindow(Window):
@@ -838,6 +899,10 @@ class MenuWindow(Window):
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if checkCloseKeyCombo(event):
             self.close()
+        elif checkIncreaseArrowKey(event):
+            self.eyeColorThresholdSlider.increment()
+        elif checkDecreaseArrowKey(event):
+            self.eyeColorThresholdSlider.decrement()
         else:
             # Handle normal key presses
             return super().keyPressEvent(event)
@@ -847,7 +912,7 @@ if __name__ == "__main__":
     app = QApplication([])
 
     # Set the widget to test here
-    testWidget = EyeColorThresholdSlider(2, print)
+    testWidget = EyeColorThresholdSlider(DEFAULT_EYE_COLOR_THRESHOLD, print)
 
     testWindow = Window()
     testWindow.setCentralWidget(testWidget)

@@ -7,7 +7,13 @@ import cv2
 import pyautogui
 from detectEyes import EyeDetection
 from computeScreenCoords import Interpolator, InterpolationType
-from ui import UI, CALIBRATION_FILE_NAME, PupilModelOptions, EYE_COLOR_THRESHOLD_RANGE
+from ui import (
+    UI,
+    CALIBRATION_FILE_NAME,
+    PupilModelOptions,
+    EYE_COLOR_THRESHOLD_RANGE,
+    DEFAULT_EYE_COLOR_THRESHOLD,
+)
 from camera import Camera
 from settings import loadSettings, saveSettings, SETTINGS_FILE_NAME
 
@@ -33,6 +39,7 @@ class IrisSoftware:
         print("Initializing Iris Software...")
         self.settings = loadSettings()
         self.state = IrisSoftware.State()
+        self.processingSem = threading.Semaphore()
 
         self.eyeDetector = EyeDetection()
 
@@ -91,9 +98,9 @@ class IrisSoftware:
             return self.state.lastCursorPos
 
     def changeEyeColorThreshold(self, value: int):
-        """Take a value within EYE_COLOR_THRESHOLD_RANGE and scale it up to a max of ~150."""
+        """Take a value within EYE_COLOR_THRESHOLD_RANGE and scale it up to a max of ~100."""
         rangeMax = EYE_COLOR_THRESHOLD_RANGE[1]
-        step = 150 // rangeMax
+        step = 100 // rangeMax
 
         self.settings.eyeColorThreshold = value
         transformedValue = step * (value)
@@ -117,37 +124,6 @@ class IrisSoftware:
         self.state.calibrationEyeCoords = []
         self.state.currentlyCalibrating = False
         print("Reset current calibration eye coords.")
-
-    def performInitialConfiguration(self):
-        """Adjusts the eye color threshold until it detects pupils."""
-        detectedPupils = False
-        framesToCapture = 10
-
-        for i in range(EYE_COLOR_THRESHOLD_RANGE[1] + 1):
-            self.changeEyeColorThreshold(i)
-
-            currDetectedEyeCoords = []
-
-            # Capture multiple frames to improve accuracy
-            for _ in range(framesToCapture):
-                frame = self.camera.getFrame()
-                eyeCoords = self.eyeDetector.detectEyes(frame)
-                if len(eyeCoords) >= 2:
-                    currDetectedEyeCoords.append(eyeCoords)
-
-            # Ensure that eyeCoords are found in each frame
-            if len(currDetectedEyeCoords) >= int(framesToCapture * 0.8):
-                print(f"Initial configuration eye threshold: {i}")
-                self.changeEyeColorThreshold(i)
-                detectedPupils = True
-                break
-
-        # If we cannot determien the optimal value, set the threshold to a sensible default
-        if not detectedPupils:
-            print(
-                "Failed to automatically find the best threshold, setting to default."
-            )
-            self.changeEyeColorThreshold(2)
 
     def captureCalibrationEyeCoords(self):
         """Captures and stores a eye coords for calibration."""
@@ -238,7 +214,7 @@ class IrisSoftware:
 
         if not self.state.isCalibrated:
             # Do not continue drawing data that requires calibration without being calibrated
-            return
+            return frame
 
         # Draw the face box
         faceX, faceY, faceW, faceH = self.state.faceBox
@@ -260,6 +236,8 @@ class IrisSoftware:
         """Thread to run main loop of eye detection"""
         while not self.state.shouldExit:
             if self.state.currentlyCalibrating:
+                self.processingSem.acquire()
+                self.processingSem.release()
                 continue
 
             # Get the camera frame
@@ -303,24 +281,34 @@ class IrisSoftware:
         instructionsResult = self.ui.runShowInstructions()
         if instructionsResult == -1:
             sys.exit()
+        # Spawn the processing thread
+        print("Launching processing thread...")
+        self.processingThread = threading.Thread(target=self.processing)
+        self.processingThread.start()
         # Handle initial settings
         if not os.path.exists(SETTINGS_FILE_NAME):
             print("Performing initial configuration...")
-            self.performInitialConfiguration()
+            self.changeEyeColorThreshold(DEFAULT_EYE_COLOR_THRESHOLD)
+            result = self.ui.runInitialConfiguration()
+            if result == -1:
+                self.state.shouldExit = True
+                sys.exit()
         # Handle initial calibration
         if not self.state.isCalibrated:
             print("Calibrating program...")
+            self.processingSem.acquire()
+            self.state.currentlyCalibrating = True
             result = self.ui.runInitialCalibration()
             if result == -1:
+                self.state.shouldExit = True
+                self.processingSem.release()
                 sys.exit()
             self.interpolator.calibrateInterpolator(
                 CALIBRATION_FILE_NAME, self.state.interpolatorType
             )
             self.state.isCalibrated = True
-        # Spawn the processing thread
-        print("Launching processing thread...")
-        self.processingThread = threading.Thread(target=self.processing)
-        self.processingThread.start()
+            self.state.currentlyCalibrating = False
+            self.processingSem.release()
         # Run the UI
         print("Launching the UI...")
         self.ui.run()
