@@ -204,12 +204,24 @@ class InitialConfigWindow(Window):
 
         return layout
 
-    def __setupUI(self):
+    def __getInstructionsAndTitle(self):
         title = Heading("Configuration")
         instructions = ProseText(
             "Before you calibrate the program, it's important to make sure that Iris Software can correctly detect your eyes. Please adjust the eye color threshold until you can reliably see blue circles around your eyes. You can use the arrow keys to increase or decrease the eye color threshold value.",
             True,
         )
+
+        layout = QVBoxLayout()
+        layout.addStretch()
+        layout.addWidget(title)
+        layout.addSpacing(20)
+        layout.addWidget(instructions)
+        layout.addStretch()
+
+        return layout
+
+    def __setupUI(self):
+        instructionsAndTitle = self.__getInstructionsAndTitle()
         self.preview = self.__getPreview()
         self.eyeColorSlider = self.__getEyeColorSlider()
         buttons = self.__getButtons()
@@ -220,15 +232,13 @@ class InitialConfigWindow(Window):
 
         instructionsPreviewLayout = QHBoxLayout()
         instructionsPreviewLayout.addStretch()
-        instructionsPreviewLayout.addWidget(instructions)
+        instructionsPreviewLayout.addLayout(instructionsAndTitle)
         instructionsPreviewLayout.addLayout(previewSliderLayout)
         instructionsPreviewLayout.addStretch()
 
         container = QWidget()
         verticalLayout = QVBoxLayout(container)
         verticalLayout.addStretch()
-        verticalLayout.addWidget(title, alignment=QtCore.Qt.AlignHCenter)
-        verticalLayout.addSpacing(20)
         verticalLayout.addLayout(instructionsPreviewLayout)
         verticalLayout.addSpacing(20)
         verticalLayout.addLayout(buttons)
