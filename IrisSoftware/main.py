@@ -128,9 +128,6 @@ class IrisSoftware:
 
     def captureCalibrationEyeCoords(self):
         """Captures and stores a eye coords for calibration."""
-        # not best spot to set currently calibrating to true, ideally should be another signal that is called under __openCalibration in ui.py or in calibrationwindow widget initialization
-        self.state.currentlyCalibrating = True
-
         eyeCoords = []
         maxFramesToCapture = 30
 
