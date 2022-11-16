@@ -1,5 +1,6 @@
 """A collection of widgets for the UI."""
 import math
+import pathlib
 import sys
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
@@ -18,6 +19,7 @@ from numpy import ndarray
 from settings import loadSettings, PupilModelOptions
 
 MODIFIER_KEY = "CMD" if sys.platform == "darwin" else "CTRL"
+CURSOR_MOVEMENT_GIF_PATH = str(pathlib.Path("./resources/CursorMovement.gif").resolve())
 
 
 def checkCloseKeyCombo(event: QtGui.QKeyEvent):
@@ -119,6 +121,18 @@ class Window(QMainWindow):
         self.__setStyle()
 
 
+class CursorMovementGif(QLabel):
+    """Instructional gif on cursor movement."""
+
+    def __init__(self):
+        super().__init__()
+
+        self.mov = QtGui.QMovie(CURSOR_MOVEMENT_GIF_PATH)
+        self.mov.setScaledSize(QtCore.QSize(256, 256))
+        self.setMovie(self.mov)
+        self.mov.start()
+
+
 class InstructionsWindow(Window):
     """Window for displaying instructions."""
 
@@ -167,15 +181,23 @@ class InstructionsWindow(Window):
         buttonLayout.addStretch()
 
         title = Heading("Iris Software - Welcome")
+
+        instructionsLayout = QHBoxLayout()
         instructions = ProseText(
-            f"Welcome to Iris Software - a program that allows you to control your computer with your eyes. Before being able to use the program, you'll go through a calibration process.\n\nAfter this calibration progress, the program will start. To move the mouse, move your eyes either up, down, left, or right of the boxes drawn around them to move in that direction. Return your eyes to the center of the boxes to stop moving the mouse.\n\nTo perform a mouse click, simply perform an exaggerated blink with your eyes.\n\nIf at any time you would like to close a window, use the key combination [{MODIFIER_KEY}] + [W]. Closing all windows will exit the program.",
+            f"Welcome to Iris Software - a program that allows you to control your mouse cursor without using a physical mouse. Before being able to use the program, you'll go through a calibration process. After this calibration progress, the program will start.\n\nTo move the cursor (see diagram), move your head so that your eyes go outside of the inner white boxes. When your eyes are outside of these boxes, the cursor will begin moving in that direction. Return your eyes to the center of the boxes to stop moving the mouse.\n\nTo perform a mouse click, simply perform a slightly exaggerated blink with your eyes.\n\nIf at any time you would like to close a window, use the key combination [{MODIFIER_KEY}] + [W] when focused on a particular window. Closing all windows will exit the program.",
             True,
         )
+        cursorMovementGif = CursorMovementGif()
+        instructionsLayout.addStretch()
+        instructionsLayout.addWidget(instructions)
+        instructionsLayout.addSpacing(40)
+        instructionsLayout.addWidget(cursorMovementGif)
+        instructionsLayout.addStretch()
 
         verticalLayout.addStretch()
         verticalLayout.addWidget(title, alignment=QtCore.Qt.AlignHCenter)
         verticalLayout.addSpacing(40)
-        verticalLayout.addWidget(instructions)
+        verticalLayout.addLayout(instructionsLayout)
         verticalLayout.addSpacing(40)
         verticalLayout.addLayout(buttonLayout)
         verticalLayout.addStretch()
