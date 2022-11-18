@@ -138,17 +138,19 @@ class JoystickInterpolator():
 
         size = math.floor(math.sqrt(len(leftEyeXData)))
 
-        self.leftYMin = mean(sorted(leftEyeYData)[:size])
-        self.rightYMin = mean(sorted(rightEyeYData)[:size])
+        boxEnlargementFactor = 0.02
 
-        self.leftXMin = mean(sorted(leftEyeXData)[:size])
-        self.rightXMin = mean(sorted(rightEyeXData)[:size])
+        self.leftYMin = mean(sorted(leftEyeYData)[:size]) * (1 - boxEnlargementFactor) 
+        self.rightYMin = mean(sorted(rightEyeYData)[:size]) * (1 - boxEnlargementFactor)
 
-        self.leftYMax = mean(sorted(leftEyeYData)[-size:])
-        self.rightYMax = mean(sorted(rightEyeYData)[-size:])
+        self.leftXMin = mean(sorted(leftEyeXData)[:size]) * (1 - boxEnlargementFactor)
+        self.rightXMin = mean(sorted(rightEyeXData)[:size]) * (1 - boxEnlargementFactor)
 
-        self.leftXMax = mean(sorted(leftEyeXData)[-size:])
-        self.rightXMax = mean(sorted(rightEyeXData)[-size:])
+        self.leftYMax = mean(sorted(leftEyeYData)[-size:]) * (1 + boxEnlargementFactor) 
+        self.rightYMax = mean(sorted(rightEyeYData)[-size:]) * (1 + boxEnlargementFactor)
+
+        self.leftXMax = mean(sorted(leftEyeXData)[-size:]) * (1 + boxEnlargementFactor)
+        self.rightXMax = mean(sorted(rightEyeXData)[-size:]) * (1 + boxEnlargementFactor)
 
         self.screenXMax = mean(sorted(screenXData)[-size:])
         self.screenYMax = mean(sorted(screenYData)[-size:])

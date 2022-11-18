@@ -62,7 +62,7 @@ class EyeDetection:
         self.numBlurIterations = 7
 
         self.blinkCounter = 0
-        self.minBlinkDuration = 40
+        self.minBlinkDuration = 45
 
     def setDetectionType(self, detectionType):
         '''Set the detection type to the specified enum value'''
