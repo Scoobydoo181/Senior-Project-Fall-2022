@@ -204,7 +204,7 @@ class IrisSoftware:
         self.resetCalibrationEyeCoords()
 
     def drawOnFrame(self, frame, eyeCoords):
-        thickness = 3
+        thickness = 2
         blue600 = (216, 78, 29)  # G,B,R
         white = (255, 255, 255)  # G,B,R
 
