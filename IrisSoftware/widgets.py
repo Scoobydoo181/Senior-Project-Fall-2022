@@ -18,6 +18,8 @@ import qimage2ndarray
 from numpy import ndarray
 from settings import loadSettings, PupilModelOptions
 
+EYE_COLOR_THRESHOLD_RANGE = (0, 20)
+DEFAULT_EYE_COLOR_THRESHOLD = 6
 MODIFIER_KEY = "CMD" if sys.platform == "darwin" else "CTRL"
 CURSOR_MOVEMENT_GIF_PATH = str(pathlib.Path("./resources/CursorMovement.gif").resolve())
 
@@ -40,6 +42,32 @@ def checkCancelKey(event: QtGui.QKeyEvent):
 
 def checkContinueKey(event: QtGui.QKeyEvent):
     return event.key() == QtCore.Qt.Key_Enter or event.key() == QtCore.Qt.Key_Return
+
+
+def checkIncreaseArrowKey(event: QtGui.QKeyEvent):
+    return event.key() == QtCore.Qt.Key_Right or event.key() == QtCore.Qt.Key_Up
+
+
+def checkDecreaseArrowKey(event: QtGui.QKeyEvent):
+    return event.key() == QtCore.Qt.Key_Left or event.key() == QtCore.Qt.Key_Down
+
+
+def calculatePreviewSize(cameraResolution: tuple[int]) -> QtCore.QSize:
+    factor = DesignTokens.previewHeight / float(cameraResolution[1])
+    width = math.ceil(cameraResolution[0] * factor)
+
+    print(f"Preview resolution: {width}x{DesignTokens.previewHeight}")
+
+    return QtCore.QSize(width, DesignTokens.previewHeight)
+
+
+def getPreviewImageFromFrame(frame, previewSize: QtCore.QSize):
+    """This function references the following snippet: https://gist.github.com/bsdnoobz/8464000"""
+    # pylint: disable=no-member
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    frame = cv2.flip(frame, 1)
+    frame = cv2.resize(frame, (previewSize.width(), previewSize.height()))
+    return qimage2ndarray.array2qimage(frame)
 
 
 class DesignTokens:
@@ -70,6 +98,7 @@ class DesignTokens:
     ### ###
 
     maxWidthProse = 520
+    previewHeight = 480
 
     ### Component Tokens ###
     # Button
@@ -119,6 +148,112 @@ class Window(QMainWindow):
         super().__init__()
 
         self.__setStyle()
+
+
+class InitialConfigWindow(Window):
+    """Window to handle any initial settings configuration."""
+
+    changeEyeColorThresholdSignal = QtCore.Signal(int)
+    cameraFrameSignal = QtCore.Signal(ndarray)
+    closeSignal = QtCore.Signal()
+    continueSignal = QtCore.Signal()
+
+    def closeEvent(self, _) -> None:
+        self.closeSignal.emit()
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        if checkCancelKey(event) or checkCloseKeyCombo(event):
+            self.closeSignal.emit()
+        elif checkContinueKey(event):
+            self.continueSignal.emit()
+        elif checkIncreaseArrowKey(event):
+            self.eyeColorSlider.increment()
+        elif checkDecreaseArrowKey(event):
+            self.eyeColorSlider.decrement()
+        else:
+            # Handle normal key presses
+            return super().keyPressEvent(event)
+
+    @QtCore.Slot(ndarray)
+    def __updatePreview(self, frame):
+        image = getPreviewImageFromFrame(frame, self.previewSize)
+        self.preview.setPixmap(QtGui.QPixmap.fromImage(image))
+
+    def __getPreview(self):
+        preview = QLabel()
+        preview.setFixedSize(self.previewSize)
+        return preview
+
+    def __getEyeColorSlider(self):
+        return EyeColorThresholdSlider(
+            DEFAULT_EYE_COLOR_THRESHOLD, self.changeEyeColorThresholdSignal.emit
+        )
+
+    def __getButtons(self):
+        closeButton = Button("Close [ESC]")
+        continueButton = Button("Continue [ENTER]", variant="primary")
+        closeButton.clicked.connect(self.closeSignal)
+        continueButton.clicked.connect(self.continueSignal)
+
+        layout = QHBoxLayout()
+        layout.addStretch()
+        layout.addWidget(closeButton)
+        layout.addSpacing(20)
+        layout.addWidget(continueButton)
+        layout.addStretch()
+
+        return layout
+
+    def __getInstructionsAndTitle(self):
+        title = Heading("Configuration")
+        instructions = ProseText(
+            "Before you calibrate the program, it's important to make sure that Iris Software can correctly detect your eyes. Please adjust the eye color threshold until you can reliably see blue circles around your eyes. You can use the arrow keys to increase or decrease the eye color threshold value.",
+            True,
+        )
+
+        layout = QVBoxLayout()
+        layout.addStretch()
+        layout.addWidget(title)
+        layout.addSpacing(20)
+        layout.addWidget(instructions)
+        layout.addStretch()
+
+        return layout
+
+    def __setupUI(self):
+        instructionsAndTitle = self.__getInstructionsAndTitle()
+        self.preview = self.__getPreview()
+        self.eyeColorSlider = self.__getEyeColorSlider()
+        buttons = self.__getButtons()
+
+        previewSliderLayout = QVBoxLayout()
+        previewSliderLayout.addWidget(self.preview)
+        previewSliderLayout.addWidget(self.eyeColorSlider)
+
+        instructionsPreviewLayout = QHBoxLayout()
+        instructionsPreviewLayout.addStretch()
+        instructionsPreviewLayout.addLayout(instructionsAndTitle)
+        instructionsPreviewLayout.addLayout(previewSliderLayout)
+        instructionsPreviewLayout.addStretch()
+
+        container = QWidget()
+        verticalLayout = QVBoxLayout(container)
+        verticalLayout.addStretch()
+        verticalLayout.addLayout(instructionsPreviewLayout)
+        verticalLayout.addSpacing(20)
+        verticalLayout.addLayout(buttons)
+        verticalLayout.addStretch()
+
+        self.setCentralWidget(container)
+
+    def __init__(self, cameraResolution: tuple[int, int]):
+        super().__init__()
+
+        self.previewSize = calculatePreviewSize(cameraResolution)
+
+        self.__setupUI()
+
+        self.cameraFrameSignal.connect(self.__updatePreview)
 
 
 class CursorMovementGif(QLabel):
@@ -208,19 +343,12 @@ class InstructionsWindow(Window):
 class MainWindow(Window):
     """Main widget showing the video stream in the corner."""
 
-    TARGET_PREVIEW_HEIGHT = 480
-
     cameraFrameSignal = QtCore.Signal(ndarray)
     openMenuSignal = QtCore.Signal()
 
     @QtCore.Slot(ndarray)
     def __displayCameraFrame(self, frame):
-        """This function references the following snippet: https://gist.github.com/bsdnoobz/8464000"""
-        # pylint: disable=no-member
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = cv2.flip(frame, 1)
-        frame = cv2.resize(frame, (self.previewSize.width(), self.previewSize.height()))
-        image = qimage2ndarray.array2qimage(frame)
+        image = getPreviewImageFromFrame(frame, self.previewSize)
         self.videoPreview.setPixmap(QtGui.QPixmap.fromImage(image))
 
     def positionInTopRightCorner(self):
@@ -228,14 +356,6 @@ class MainWindow(Window):
             QApplication.primaryScreen().availableGeometry().right() - self.width(),
             QApplication.primaryScreen().availableGeometry().top(),
         )
-
-    def __calculatePreviewSize(self, cameraResolution: tuple[int]) -> QtCore.QSize:
-        factor = MainWindow.TARGET_PREVIEW_HEIGHT / float(cameraResolution[1])
-        width = math.ceil(cameraResolution[0] * factor)
-
-        print(f"Preview resolution: {width}x{MainWindow.TARGET_PREVIEW_HEIGHT}")
-
-        return QtCore.QSize(width, MainWindow.TARGET_PREVIEW_HEIGHT)
 
     def __setupSlotHandlers(self):
         self.cameraFrameSignal.connect(self.__displayCameraFrame)
@@ -273,7 +393,7 @@ class MainWindow(Window):
     def __init__(self, cameraResolution: tuple[int, int]):
         super().__init__()
         # Properties
-        self.previewSize = self.__calculatePreviewSize(cameraResolution)
+        self.previewSize = calculatePreviewSize(cameraResolution)
 
         # Initialize UI elements
         self.videoPreview: QLabel = None
@@ -639,7 +759,46 @@ class SelectionGroup(QWidget):
         layout.addStretch()
 
 
-EYE_COLOR_THRESHOLD_RANGE = (0, 20)
+class EyeColorThresholdSlider(QWidget):
+    """Slider for eye color threshold."""
+
+    def increment(self):
+        self.slider.setValue(self.slider.value() + 1)
+
+    def decrement(self):
+        self.slider.setValue(self.slider.value() - 1)
+
+    def __handleChange(self, value: int):
+        if hasattr(self, "onChange") and self.onChange is not None:
+            self.onChange(value)
+        self.label.setText(f"Value: {value}")
+
+    def __setupUI(self, value: int):
+        verticalLayout = QVBoxLayout(self)
+        horizontalLayout = QHBoxLayout()
+
+        self.label = QLabel(f"Value: {value}")
+
+        self.slider = Slider(
+            EYE_COLOR_THRESHOLD_RANGE[0],
+            EYE_COLOR_THRESHOLD_RANGE[1],
+            value,
+        )
+
+        verticalLayout.addLayout(horizontalLayout)
+        verticalLayout.addWidget(self.label, alignment=QtCore.Qt.AlignHCenter)
+
+        horizontalLayout.addWidget(QLabel("Dark Eyes"))
+        horizontalLayout.addWidget(self.slider)
+        horizontalLayout.addWidget(QLabel("Light Eyes"))
+
+    def __init__(self, value: int, onChange: callable = None):
+        super().__init__()
+
+        self.onChange = onChange
+        self.__setupUI(value)
+        self.slider.valueChanged.connect(self.__handleChange)
+        self.__handleChange(value)
 
 
 class MenuWindow(Window):
@@ -658,7 +817,7 @@ class MenuWindow(Window):
 
         self.calibrationButtonContainer: QWidget
 
-        self.eyeColorThresholdContainer: QWidget
+        self.eyeColorThresholdSlider: EyeColorThresholdSlider
         self.eyeColorThresholdValueLabel: QLabel
 
         self.pupilModelMapping = {
@@ -699,36 +858,11 @@ class MenuWindow(Window):
             pupilModelSelectionOptions, defaultValue
         )
 
-    def __eyeColorThresholdValueChange(self, value: int):
-        self.changeEyeColorThresholdSignal.emit(value)
-        self.eyeColorThresholdValueLabel.setText(f"Value: {value}")
-
     def __setupEyeColorThresholdSlider(self):
-        self.eyeColorThresholdContainer = QWidget()
-        verticalLayout = QVBoxLayout(self.eyeColorThresholdContainer)
-        horizontalLayout = QHBoxLayout()
-
-        self.eyeColorThresholdValueLabel = QLabel(
-            f"Value: {self.savedSettings.eyeColorThreshold}"
-        )
-
-        eyeColorThresholdSlider = Slider(
-            EYE_COLOR_THRESHOLD_RANGE[0],
-            EYE_COLOR_THRESHOLD_RANGE[1],
+        self.eyeColorThresholdSlider = EyeColorThresholdSlider(
             self.savedSettings.eyeColorThreshold,
+            self.changeEyeColorThresholdSignal.emit,
         )
-        eyeColorThresholdSlider.valueChanged.connect(
-            self.__eyeColorThresholdValueChange
-        )
-
-        verticalLayout.addLayout(horizontalLayout)
-        verticalLayout.addWidget(
-            self.eyeColorThresholdValueLabel, alignment=QtCore.Qt.AlignHCenter
-        )
-
-        horizontalLayout.addWidget(QLabel("Dark Eyes"))
-        horizontalLayout.addWidget(eyeColorThresholdSlider)
-        horizontalLayout.addWidget(QLabel("Light Eyes"))
 
     def __setupCalibrationButton(self):
         self.calibrationButtonContainer = QWidget()
@@ -765,7 +899,7 @@ class MenuWindow(Window):
         layout.addWidget(self.pupilModelSelectionGroup)
         layout.addWidget(eyeColorThresholdLabel)
         layout.addWidget(eyeColorThresholdDesc)
-        layout.addWidget(self.eyeColorThresholdContainer)
+        layout.addWidget(self.eyeColorThresholdSlider)
         layout.addWidget(calibrationLabel)
         layout.addWidget(self.calibrationButtonContainer)
         layout.addStretch()
@@ -775,6 +909,23 @@ class MenuWindow(Window):
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if checkCloseKeyCombo(event):
             self.close()
+        elif checkIncreaseArrowKey(event):
+            self.eyeColorThresholdSlider.increment()
+        elif checkDecreaseArrowKey(event):
+            self.eyeColorThresholdSlider.decrement()
         else:
             # Handle normal key presses
             return super().keyPressEvent(event)
+
+
+if __name__ == "__main__":
+    app = QApplication([])
+
+    # Set the widget to test here
+    testWidget = EyeColorThresholdSlider(DEFAULT_EYE_COLOR_THRESHOLD, print)
+
+    testWindow = Window()
+    testWindow.setCentralWidget(testWidget)
+    testWindow.show()
+
+    app.exec()

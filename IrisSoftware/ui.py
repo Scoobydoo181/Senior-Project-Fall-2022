@@ -9,6 +9,8 @@ from widgets import (
     MenuWindow,
     PupilModelOptions,
     EYE_COLOR_THRESHOLD_RANGE,
+    InitialConfigWindow,
+    DEFAULT_EYE_COLOR_THRESHOLD,
 )
 from PySide6 import QtCore, QtGui
 
@@ -31,8 +33,10 @@ class UI:
         self.mainWindow: MainWindow
         self.calibrationWindow: CalibrationWindow
         self.menuWindow: MenuWindow
+        self.initialConfigWindow: InitialConfigWindow = None
         # Create callback properties
         self.onCaptureCalibrationEyeCoords: callable
+        self.onCalibrationOpen: callable
         self.onCalibrationCancel: callable
         self.onCalibrationComplete: callable
         self.onChangePupilModel: callable
@@ -50,6 +54,19 @@ class UI:
         instructionsWindow.closeSignal.connect(self.__handleInstructionsClose)
         instructionsWindow.show()
         print("Show instructions running.")
+        return self.app.exec()
+
+    def runInitialConfiguration(self):
+        self.initialConfigWindow = InitialConfigWindow(self.cameraResolution)
+        self.initialConfigWindow.changeEyeColorThresholdSignal.connect(
+            self.onChangeEyeColorThreshold
+        )
+        self.initialConfigWindow.continueSignal.connect(
+            self.__handleInitialConfigContinue
+        )
+        self.initialConfigWindow.closeSignal.connect(self.__handleInitialConfigClose)
+        self.initialConfigWindow.showFullScreen()
+        print("Initial configuration running.")
         return self.app.exec()
 
     def run(self):
@@ -74,7 +91,12 @@ class UI:
             self.mainWindow = None
 
     def emitCameraFrame(self, frame):
-        if self.mainWindow is not None:
+        if (
+            hasattr(self, "initialConfigWindow")
+            and self.initialConfigWindow is not None
+        ):
+            self.initialConfigWindow.cameraFrameSignal.emit(frame)
+        if hasattr(self, "mainWindow") and self.mainWindow is not None:
             self.mainWindow.cameraFrameSignal.emit(frame)
 
     def emitFinishedCaptureEyeCoords(self):
@@ -105,10 +127,21 @@ class UI:
         self.calibrationWindow.captureEyeCoordsSignal.connect(
             self.__handleCalibrationCaptureEyeCoords
         )
+        if hasattr(self, "onCalibrationOpen") and self.onCalibrationOpen is not None:
+            self.onCalibrationOpen()
         # Show the window
         self.calibrationWindow.showFullScreen()
 
     ### Signal handlers ###
+
+    @QtCore.Slot()
+    def __handleInitialConfigClose(self):
+        self.app.exit(-1)
+
+    @QtCore.Slot()
+    def __handleInitialConfigContinue(self):
+        self.initialConfigWindow = None
+        self.app.exit()
 
     @QtCore.Slot()
     def __handleInstructionsClose(self):
@@ -147,6 +180,8 @@ class UI:
 
     @QtCore.Slot()
     def __handleCalibrationCancelInitial(self):
+        if hasattr(self, "onCalibrationCancel"):
+            self.onCalibrationCancel()
         self.app.exit(-1)
 
     @QtCore.Slot()
